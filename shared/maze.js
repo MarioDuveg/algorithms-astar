@@ -1,15 +1,16 @@
-/** Laberinto 65×65: muros fragmentados, patios, densidad ajustable y simetría rotacional. */
+/** Laberinto aleatorio 65×65, conectado, con pasillos, bifurcaciones y salas.
+ *  Cuatro sectores rotados ofrecen una topología equivalente para cada orilla. */
 export const SIZE = 65;
 export const CENTER = (SIZE - 1) / 2;
 export const GOAL = [CENTER, CENTER];
 export const MAX_STUDENTS = 20;
 export const DEFAULT_COMPLEXITY = 3;
 export const COMPLEXITY_LEVELS = Object.freeze([
-  { level: 1, name: 'Muy abierto', target: 0.12 },
-  { level: 2, name: 'Abierto', target: 0.18 },
-  { level: 3, name: 'Intermedio', target: 0.25 },
-  { level: 4, name: 'Complejo', target: 0.31 },
-  { level: 5, name: 'Muy complejo', target: 0.37 },
+  { level: 1, name: 'Muy abierto', target: 0.22 },
+  { level: 2, name: 'Abierto', target: 0.28 },
+  { level: 3, name: 'Intermedio', target: 0.35 },
+  { level: 4, name: 'Complejo', target: 0.42 },
+  { level: 5, name: 'Muy complejo', target: 0.49 },
 ]);
 export const cellKey = (p) => `${p[0]},${p[1]}`;
 
@@ -53,105 +54,119 @@ function shuffle(array, random) {
 export function makeMaze(seed = 2026, complexity = DEFAULT_COMPLEXITY) {
   if (!Number.isInteger(complexity) || complexity < 1 || complexity > 5)
     throw new Error('La complejidad debe ser un entero entre 1 y 5');
+
   const random = rngFrom(seed);
-  const grid = Array.from({ length: SIZE }, () => Array(SIZE).fill('.'));
-  const protectedCell = Array.from({ length: SIZE }, () => Array(SIZE).fill(false));
-  const symmetric = (p, action) => {
-    for (let turn = 0; turn < 4; turn++) {
-      const [r, c] = rotate(p, turn);
-      if (r >= 0 && c >= 0 && r < SIZE && c < SIZE) action(r, c);
+  const grid = Array.from({ length: SIZE }, () => Array(SIZE).fill('#'));
+  let wallCount = SIZE * SIZE;
+  const carve = ([r, c]) => {
+    // Sólo dibujar sobre una cuarta parte y rotar: evita ventajas entre lados.
+    for (let t = 0; t < 4; t++) {
+      const [rr, cc] = rotate([r, c], t);
+      if (grid[rr][cc] === '#') { grid[rr][cc] = '.'; wallCount--; }
     }
   };
-  // Los caminos centrales y el perímetro permiten llegar desde cualquier orilla.
-  for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) {
-    if (r <= 1 || c <= 1 || r >= SIZE - 2 || c >= SIZE - 2 ||
-        Math.abs(r - CENTER) <= 1 || Math.abs(c - CENTER) <= 1 ||
-        Math.abs(r - CENTER) + Math.abs(c - CENTER) <= 7) protectedCell[r][c] = true;
+
+  // 1) Laberinto REAL: árbol de expansión aleatorio (DFS) sobre celdas impares.
+  //    Cada celda del pasillo de un sector se conecta con todas las demás.
+  //    Los cuatro sectores son rotaciones del mismo árbol, sin islas aisladas.
+  const seen = Array.from({ length: 16 }, () => Array(16).fill(false));
+  const first = [Math.floor(random() * 16), Math.floor(random() * 16)];
+  const stack = [first];
+  seen[first[0]][first[1]] = true;
+  carve([1 + 2 * first[0], 1 + 2 * first[1]]);
+  while (stack.length) {
+    const [r, c] = stack[stack.length - 1];
+    const neighbors = shuffle([[r + 1,c],[r - 1,c],[r,c + 1],[r,c - 1]], random)
+      .filter(([nr, nc]) => nr >= 0 && nr < 16 && nc >= 0 && nc < 16 && !seen[nr][nc]);
+    if (!neighbors.length) { stack.pop(); continue; }
+    const [nr, nc] = neighbors[0];
+    seen[nr][nc] = true;
+    carve([1 + r + nr, 1 + c + nc]); // corredor entre ambas casillas
+    carve([1 + 2 * nr, 1 + 2 * nc]);
+    stack.push([nr, nc]);
   }
-  // Patios libres distribuidos al azar, rotados para que los cuatro lados sean comparables.
-  for (let i = 0; i < 9; i++) {
-    const r = 4 + Math.floor(random() * 22);
-    const c = 4 + Math.floor(random() * 22);
-    const height = 3 + Math.floor(random() * 5);
-    const width = 3 + Math.floor(random() * 5);
-    for (let dr = 0; dr < height; dr++) for (let dc = 0; dc < width; dc++) {
-      symmetric([r + dr, c + dc], (rr, cc) => { protectedCell[rr][cc] = true; });
-    }
-  }
-  let wallCount = 0;
-  const wall = (p) => {
-    const cells = [];
-    symmetric(p, (r, c) => cells.push([r, c]));
-    if (cells.some(([r, c]) => protectedCell[r][c])) return;
-    for (const [r, c] of cells) {
-      if (grid[r][c] !== '#') { grid[r][c] = '#'; wallCount++; }
-    }
-  };
+
+  // 2) Una sola meta y cuatro conexiones simétricas con el árbol generado.
+  //    Los nodos (31,31), (31,33), (33,31), (33,33) ya pertenecen a él.
+  for (let r = CENTER - 1; r <= CENTER + 1; r++)
+    for (let c = CENTER - 1; c <= CENTER + 1; c++) carve([r, c]);
+
+  // 3) Algunas salas y bucles rompen la rigidez del laberinto perfecto.
+  //    Las salas contienen celdas impares ya conectadas; no crean zonas aisladas.
+  const roomCounts = [16, 12, 8, 5, 2];
   const target = Math.round(COMPLEXITY_LEVELS[complexity - 1].target * SIZE * SIZE);
-  // Construir fragmentos, no un laberinto de pasillos continuos. La densidad
-  // se controla por cantidad real de celdas de pared, no solo por iteraciones.
-  for (let attempt = 0; attempt < 15000 && wallCount < target - 60; attempt++) {
-    const r = 3 + Math.floor(random() * 27);
-    const c = 3 + Math.floor(random() * 27);
-    const horizontal = random() < 0.5;
-    const length = 2 + Math.floor(random() * 8);
-    const shape = random();
-    for (let j = 0; j < length && wallCount < target - 60; j++) {
-      if (random() < 0.08) continue; // huecos en segmentos largos
-      wall([r + (horizontal ? 0 : j), c + (horizontal ? j : 0)]);
-      if (shape < .18 && j < 3) wall([r + (horizontal ? 1 : j), c + (horizontal ? j : 1)]);
-    }
-    if (shape > .68) for (let j = 0; j < length - 2 && wallCount < target - 60; j++) {
-      wall([r + (horizontal ? j : length - 1), c + (horizontal ? length - 1 : j)]);
+  for (let i = 0; i < roomCounts[complexity - 1]; i++) {
+    const r0 = 2 + Math.floor(random() * 24), c0 = 2 + Math.floor(random() * 24);
+    const height = 3 + Math.floor(random() * 4), width = 3 + Math.floor(random() * 4);
+    for (let r = r0; r < Math.min(31, r0 + height); r++)
+      for (let c = c0; c < Math.min(31, c0 + width); c++) carve([r, c]);
+  }
+
+  // 4) Abrir puertas y atajos sin desconectar nunca las casillas existentes.
+  //    Se preserva una parte de las esquinas de muro para mantener pasillos
+  //    reconocibles, en lugar de colocar obstáculos aleatorios sueltos.
+  let attempts = 0;
+  while (wallCount > target + 20 && attempts++ < 20000) {
+    const r = 2 + Math.floor(random() * 29), c = 2 + Math.floor(random() * 29);
+    if (grid[r][c] !== '#') continue;
+    const door = r % 2 !== c % 2;
+    if (random() > (door ? 0.95 : 0.30)) continue;
+    if ([[1,0],[-1,0],[0,1],[0,-1]].some(([dr, dc]) => grid[r + dr][c + dc] === '.')) carve([r, c]);
+  }
+  // Escenario muy abierto: si faltan huecos, completar desde la frontera
+  // conectada (sin formar casillas libres completamente incomunicadas).
+  if (wallCount > target + 20) {
+    const candidates = shuffle(Array.from({ length: 29 * 29 }, (_, i) => [2 + Math.floor(i / 29), 2 + i % 29]), random);
+    for (const [r, c] of candidates) {
+      if (wallCount <= target + 20) break;
+      if (grid[r][c] === '#' && [[1,0],[-1,0],[0,1],[0,-1]].some(([dr, dc]) => grid[r + dr][c + dc] === '.')) carve([r, c]);
     }
   }
-  // Tres desvíos por brazo: impiden que el corredor central sea una línea recta.
-  // Se reabren conexiones laterales, siempre simétricas, después de dibujar paredes.
-  for (const depth of [9, 19, 27]) {
-    for (let dc = -2; dc <= 2; dc++) symmetric([depth, CENTER + dc], (r, c) => {
-      if (grid[r][c] !== '#') { grid[r][c] = '#'; wallCount++; }
-    });
-    for (let dr = -1; dr <= 1; dr++) symmetric([depth + dr, CENTER + 3], (r, c) => {
-      if (grid[r][c] === '#') { grid[r][c] = '.'; wallCount--; }
-    });
-    for (let dc = 0; dc <= 3; dc++) for (const dr of [-1, 1]) symmetric([depth + dr, CENTER + dc], (r, c) => {
-      if (grid[r][c] === '#') { grid[r][c] = '.'; wallCount--; }
-    });
-  }
-  // Cinco accesos por lado; se sortean, preservando una ventana de dificultad
-  // muy parecida (máximo cuatro pasos óptimos) y una separación si es posible.
+
+  // 5) Cinco accesos por lado. Se eligen al azar entre aquellos con una
+  //    distancia al centro de como máximo cuatro pasos de diferencia.
+  //    La orilla está cerrada salvo por las 20 puertas ocupables.
   const dist = distanceMap(grid, GOAL);
-  const top = Array.from({ length: SIZE - 6 }, (_, i) => ({ p: [0, i + 3], d: dist[0][i + 3] }));
-  const minDistance = Math.min(...top.map((x) => x.d));
+  const candidates = Array.from({ length: 30 }, (_, i) => ({
+    p: [0, 3 + 2 * i], d: dist[1][3 + 2 * i] + 1,
+  }));
   const windows = [];
-  for (let d = minDistance; d <= minDistance + 20; d++) {
-    const options = top.filter((x) => x.d >= d && x.d <= d + 4);
+  for (const candidate of candidates) {
+    const options = candidates.filter(({ d }) => d >= candidate.d && d <= candidate.d + 4);
     if (options.length >= 5) windows.push(options);
   }
   shuffle(windows, random);
   let chosen = null;
-  for (const gap of [4, 3, 2, 1]) {
+  for (const gap of [8, 6, 4, 2]) {
     for (const options of windows) {
-      const ordered = shuffle([...options], random);
       const picks = [];
-      for (const option of ordered) {
-        if (picks.every((x) => Math.abs(x.p[1] - option.p[1]) >= gap)) picks.push(option);
+      for (const option of shuffle([...options], random)) {
+        if (picks.every(({ p }) => Math.abs(p[1] - option.p[1]) >= gap)) picks.push(option);
         if (picks.length === 5) { chosen = picks; break; }
       }
       if (chosen) break;
     }
     if (chosen) break;
   }
-  if (!chosen) chosen = shuffle([...top], random).slice(0, 5);
+  if (!chosen) {
+    // Respaldo para árboles muy sinuosos: abrir una pequeña galería de borde
+    // conectada al pasillo y elegir cinco entradas vecinas equidistantes.
+    const offset = 3 + Math.floor(random() * 56);
+    for (let c = offset; c < offset + 5; c++) carve([1, c]);
+    chosen = Array.from({ length: 5 }, (_, i) => ({ p: [0, offset + i] }));
+  }
   const spawns = chosen.flatMap(({ p }) => Array.from({ length: 4 }, (_, turn) => rotate(p, turn)));
+  for (const p of spawns) carve(p);
   shuffle(spawns, random);
+  const finalDistances = distanceMap(grid, GOAL);
+
   return {
     seed, size: SIZE, center: [...GOAL], complexity,
     complexityName: COMPLEXITY_LEVELS[complexity - 1].name,
     wallCount, wallPercent: Math.round(wallCount * 1000 / (SIZE * SIZE)) / 10,
     spawns, grid: grid.map((row) => row.join('')),
-    minSpawnDistance: Math.min(...spawns.map((p) => dist[p[0]][p[1]])),
-    maxSpawnDistance: Math.max(...spawns.map((p) => dist[p[0]][p[1]])),
+    minSpawnDistance: Math.min(...spawns.map(([r, c]) => finalDistances[r][c])),
+    maxSpawnDistance: Math.max(...spawns.map(([r, c]) => finalDistances[r][c])),
   };
 }
 

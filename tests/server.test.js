@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from '../server/index.js';
 
-test('API y tema: acceso, elección bloqueada, autorización, carrera y nueva ronda', async () => {
+test('API y tema: acceso, confirmación única, autorización, carrera y nueva ronda', async () => {
   const { server } = createServer();
   await new Promise((resolve)=>server.listen(0,'127.0.0.1',resolve));
   const base = `http://127.0.0.1:${server.address().port}`;

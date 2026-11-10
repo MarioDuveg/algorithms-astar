@@ -89,15 +89,15 @@ function renderSelection() {
     note.textContent = 'Los estudiantes confirman su estrategia. Puedes iniciar o reiniciar la ronda.';
     note.classList.add('note-ready');
   } else if (own?.algorithm) {
-    button.innerHTML = 'Estrategia bloqueada <span>✓</span>';
-    note.textContent = `Confirmación única. Inicio: (${own.start.join(', ')}). Ruta óptima desde tu posición: ${own.optimalLength} pasos. Solo Reset permite volver a elegir.`;
+    button.innerHTML = 'Estrategia confirmada <span>✓</span>';
+    note.textContent = `Elección registrada. Inicio: (${own.start.join(', ')}). Ruta óptima desde tu posición: ${own.optimalLength} pasos. Podrás elegir de nuevo en la siguiente ronda.`;
     note.classList.add('note-ready');
   } else if (state && state.phase !== 'lobby') {
     note.textContent = state.phase === 'running' ? 'La carrera está en curso. Espera a Reset.' : 'Carrera terminada. El administrador puede reiniciar.';
     note.classList.remove('note-ready');
   } else {
     button.innerHTML = 'Confirmar estrategia <span>→</span>';
-    note.textContent = confirming ? 'Registrando tu única confirmación…' : 'Antes de confirmar puedes cambiar tu elección; después quedará bloqueada hasta Reset.';
+    note.textContent = confirming ? 'Registrando tu única confirmación…' : 'Puedes cambiar tu elección antes de confirmar. Después será definitiva durante esta ronda.';
     note.classList.remove('note-ready');
   }
 }
@@ -110,7 +110,7 @@ function renderMazeAdmin() {
   button.disabled = state.phase !== 'lobby' || generatingMaze;
   button.textContent = generatingMaze ? 'Generando…' : '↻ Generar nuevo laberinto';
   $('#complexity-value').textContent = `${level} · ${difficultyLabels[level - 1]}`;
-  $('#maze-generation-note').textContent = `Mapa actual: nivel ${state.maze.complexity}, ${state.maze.wallPercent}% de paredes. ${state.phase === 'lobby' ? 'Puedes generar otro sin desbloquear estrategias confirmadas.' : 'Pulsa Reset para volver a generar.'}`;
+  $('#maze-generation-note').textContent = `Mapa actual: nivel ${state.maze.complexity}, ${state.maze.wallPercent}% de paredes. ${state.phase === 'lobby' ? 'Puedes generar otro conservando las elecciones confirmadas.' : 'Pulsa Reset para volver a generar.'}`;
 }
 function drawLeaderboard() {
   const rankings = state?.leaderboard || [];
@@ -226,7 +226,7 @@ $('#select-btn').addEventListener('click', async () => {
   try {
     const response = await request('/api/select', { algorithm: selectedAlgorithm, params: paramsByAlgorithm.get(selectedAlgorithm) || DEFAULT_PARAMS });
     pending = false; applyState(response.state);
-    showToast('Estrategia confirmada y bloqueada hasta la próxima ronda.');
+    showToast('Estrategia confirmada. ¡Listo para la carrera!');
   } catch (error) { showToast(error.message, true); }
   finally { confirming = false; renderAlgorithms(); renderSelection(); }
 });
@@ -246,12 +246,12 @@ $('#generate-maze-btn').addEventListener('click', async () => {
   try {
     const result = await request('/api/regenerate', { complexity: desiredComplexity });
     applyState(result.state);
-    showToast(`Nuevo laberinto: nivel ${result.state.maze.complexity}, ${result.state.maze.wallPercent}% de paredes. Las estrategias confirmadas siguen bloqueadas.`);
+    showToast(`Nuevo laberinto: nivel ${result.state.maze.complexity}, ${result.state.maze.wallPercent}% de paredes. Se conservaron las estrategias confirmadas.`);
   } catch (error) { showToast(error.message, true); }
   finally { generatingMaze = false; renderMazeAdmin(); }
 });
 $('#reset-btn').addEventListener('click', async () => {
-  if (!window.confirm('¿Nueva ronda? Se generará otro laberinto incompleto de 65×65, se sortearán las 20 entradas y las estrategias podrán elegirse de nuevo.')) return;
+  if (!window.confirm('¿Nueva ronda? Se generará otro laberinto aleatorio de 65×65, se sortearán las 20 entradas y las estrategias podrán elegirse de nuevo.')) return;
   try { applyState((await request('/api/reset')).state); }
   catch (error) { showToast(error.message, true); }
 });

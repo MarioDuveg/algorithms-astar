@@ -68,7 +68,7 @@ export class Room {
     if (!p) throw new Error('Debes iniciar sesión');
     if (this.phase !== 'lobby') throw new Error('La ronda está activa. Espera el reinicio del administrador.');
     if (p.isAdmin) throw new Error('El administrador dirige la carrera; no participa como estudiante');
-    if (p.algorithm !== null) throw new Error('Estrategia ya confirmada: no puede cambiarse hasta Reset');
+    if (p.algorithm !== null) throw new Error('Estrategia ya confirmada: puedes volver a elegir en la siguiente ronda');
     if (!ALGORITHMS.some((a) => a.id === algorithm)) throw new Error('Selecciona un algoritmo válido');
     const used = new Set([...this.players.values()].filter((v) => v.agent).map((v) => v.agent.spawnIndex));
     const slot = this.maze.spawns.findIndex((_, i) => !used.has(i));

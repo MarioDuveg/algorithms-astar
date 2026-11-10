@@ -1,19 +1,17 @@
-# Maze Race — A* vs IDA* · edición 4.0 (20 estudiantes)
+# Maze Race — A* vs IDA* · edición 5.0 (20 estudiantes)
 
 Carrera multijugador en español para comparar **A*** e **IDA*** sobre el **mismo laberinto cuadrado 65×65**. Basado en el proyecto original Summit Lab. Incluye acceso de estudiantes, administrador, botón Start/Reset, ranking de llegada, recorrido de cada buscador, cinco heurísticas y tema claro/oscuro. Solo necesita **Node.js 20 o superior**, sin paquetes npm externos.
 
 ## Cambios de esta edición
 
-- **Tablero de 65×65 celdas** (antes 33×33), con paredes sueltas, obstáculos en L, segmentos cortos y patios de 5×5 o mayores. No es obligatorio que las paredes formen pasillos cerrados. El terreno se genera aleatoriamente al iniciar el servidor y puede sustituirse con **Generar nuevo laberinto**, sin crear otra ronda, o con **Reset**.
-- **Densidad ajustable por el administrador, de 1 a 5**: Muy abierto (~12 % de paredes), Abierto (~18 %), Intermedio (~25 %, predeterminado), Complejo (~31 %) y Muy complejo (~37 %). Se controla con un deslizador. El botón **Generar nuevo laberinto** genera otro mapa aleatorio con la complejidad elegida, pero solo está habilitado antes de Start. La pantalla muestra el porcentaje de paredes del mapa vigente. Los espacios sin obstáculos y los fragmentos de muros se conservan a cualquier nivel.
-- **Las confirmaciones sobreviven al botón Generar nuevo**: si alguien ya confirmó su algoritmo y heurística, su elección continúa bloqueada y se le asigna una nueva posición de entrada en el mapa actualizado. Solo **Reset** crea una nueva ronda y libera la selección.
-- **Puntos identificados por usuario**: ya no se dibujan 20 puntos amarillos de posibles accesos. Cada participante aparece en un punto de color con **su nombre** junto a la ficha, tanto antes de la carrera como durante el recorrido; la meta central se representa con un rombo verde.
-- **20 accesos exteriores exclusivos**, cinco en cada borde. Los lugares se sortean al crear el laberinto; su distribución también cambia al reiniciar. Cada estudiante recibe uno distinto en el momento de confirmar su estrategia.
-- El mapa sigue siendo el **mismo para todos**, con simetría rotacional de 90°. Para reducir la ventaja geográfica, las 20 posiciones se sortean dentro de una banda de longitud óptima de **como máximo cuatro pasos de diferencia**, calculada por búsqueda en anchura. Esto NO implica distancias exactamente iguales ni garantiza el mismo número de expansiones: la interfaz muestra la longitud óptima personal y el rango de la ronda. El origen exacto es aleatorio; no se debe interpretar la clasificación como una comparación experimental controlada únicamente de heurísticas.
-- Las cuatro avenidas centrales están interrumpidas por pequeños tramos de muro, pero se han abierto desvíos para **garantizar un camino** desde cualquiera de los 20 inicios hasta el centro. El borde exterior permanece transitable.
-- **Confirmar estrategia solo una vez por ronda:** la interfaz bloquea A*, IDA*, el selector de heurística y el botón. El **servidor también rechaza una segunda confirmación**, incluso al repetir manualmente la petición. Solo **Reset** permite elegir otra vez.
-- **Modo claro / modo oscuro**, desde el botón en la esquina superior derecha. Cambia toda la interfaz y los colores del Canvas; la preferencia queda guardada en el navegador.
-- Hasta **20 estudiantes y un administrador** conectados al mismo tiempo. El administrador dirige la carrera, sin ocupar una de las 20 posiciones.
+- **Laberintos auténticos y conectados**: un árbol de expansión generado con DFS forma corredores, bifurcaciones y callejones sin salida. Después se crean algunas salas y se abren atajos según la complejidad. **Todas las casillas transitables son alcanzables desde el centro**: no hay zonas libres aisladas. El mapa es diferente con cada semilla o al pulsar **Generar nuevo laberinto**.
+- **Complejidad ajustable en cinco niveles**: Muy abierto (~22 % de paredes), Abierto (~28 %), Intermedio (~35 %, predeterminado), Complejo (~42 %) y Muy complejo (~49 %). Los niveles altos mantienen más corredores estrechos y obligan a resolver más desvíos. El indicador de paredes muestra la densidad real del mapa.
+- **Acceso exterior para 20 estudiantes**: cinco puntos de partida por orilla, seleccionados aleatoriamente. Los 20 se encuentran conectados con la meta central, y la distancia óptima entre el punto más cercano y el más lejano varía **a lo sumo cuatro pasos**. El mapa tiene simetría rotacional de 90° para ofrecer la misma topología en las cuatro orillas.
+- **Confirmación única**: una vez elegidos algoritmo y heurística, el botón muestra **Estrategia confirmada ✓**. Ya no aparece el texto «Estrategia bloqueada». La estrategia sigue siendo definitiva durante la ronda y el servidor rechaza otros intentos de selección hasta que el administrador use **Reset**.
+- **Generador del administrador**: **Generar nuevo laberinto** crea otra distribución en la sala de espera, sin borrar las estrategias ya confirmadas. Se sortean nuevas posiciones válidas para cada estudiante. **Reset** inicia otra ronda y vuelve a habilitar la selección.
+- **Identificación y accesibilidad**: los estudiantes aparecen con sus nombres en las orillas y durante la carrera. No se pintan puntos de acceso amarillos sin ocupantes. La interfaz conserva el modo claro/oscuro, zoom, desplazamiento, ranking y las cinco heurísticas de A*/IDA*.
+
+Las diferencias de posiciones iniciales son pequeñas, pero no idénticas; la clasificación es una carrera didáctica y **no un experimento estrictamente controlado** para medir algoritmos.
 
 ## Reglas
 
@@ -53,7 +51,7 @@ npm run check
 npm test
 ```
 
-Las diez pruebas incluyen 65×65, cinco densidades ordenadas, generación aleatoria, patios abiertos, simetría, 20 entradas de borde diferentes, rutas posibles y con distancias cercanas, A*/IDA*, umbrales, máximo de estudiantes, bloqueo de confirmación en servidor, regeneración autorizada, API, Start/Reset y el tema oscuro.
+Las pruebas incluyen conectividad total del espacio transitable en los cinco niveles, pasillos y bifurcaciones, generación aleatoria, simetría, 20 accesos con distancias cercanas, A*/IDA*, umbrales, confirmación única en servidor, regeneración autorizada, API, Start/Reset y tema oscuro.
 
 ## Estructura
 

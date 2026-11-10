@@ -21,7 +21,7 @@ test('Incluye A*, IDA* y cinco heurísticas', () => {
   assert.equal(heuristic([0,0], [3,4], 'weighted'), 10.5);
 });
 
-test('65×65 incompleto, cuatro sectores simétricos y zonas abiertas', () => {
+test('65×65 conectado, cuatro sectores simétricos y zonas abiertas', () => {
   assert.equal(SIZE, 65);
   for (const seed of [2026, 2027, 1, 42, 999]) {
     const maze = makeMaze(seed);
@@ -150,9 +150,40 @@ test('Cinco niveles de paredes: densidad graduada, mapas aleatorios, acceso gara
   }
   assert.deepEqual(DEFAULT_COMPLEXITY,3);
   assert.ok(averages.every((p,i) => i === 0 || p > averages[i-1] + 4),`Densidad creciente: ${averages}`);
-  assert.ok(averages[2] >= 23 && averages[2] <= 26);
+  assert.ok(averages[2] >= 34 && averages[2] <= 36);
   assert.throws(() => makeMaze(1, 0),/complejidad/);
   assert.throws(() => makeMaze(1, 5.2),/complejidad/);
+});
+
+test('Todas las casillas libres están conectadas a la meta; los laberintos tienen corredores', () => {
+  for (let level = 1; level <= 5; level++) for (let seed = 1; seed <= 40; seed++) {
+    const maze = makeMaze(seed * 5339, level);
+    const visited = new Set([maze.center.join(',')]);
+    const queue = [maze.center];
+    for (let i = 0; i < queue.length; i++) {
+      const [r, c] = queue[i];
+      for (const [dr, dc] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+        const q = [r + dr, c + dc], key = q.join(',');
+        if (isOpen(maze, q) && !visited.has(key)) {
+          visited.add(key);
+          queue.push(q);
+        }
+      }
+    }
+    const floors = maze.size * maze.size - maze.wallCount;
+    assert.equal(visited.size, floors, `Islas de casillas transitables: nivel ${level}, semilla ${seed}`);
+    assert.equal(maze.spawns.length, 20);
+    assert.ok(maze.maxSpawnDistance - maze.minSpawnDistance <= 4);
+    if (level >= 3) {
+      let corridors = 0;
+      for (let r = 2; r < SIZE - 2; r++) for (let c = 2; c < SIZE - 2; c++) {
+        if (!isOpen(maze, [r,c])) continue;
+        const neighbors = [[r+1,c],[r-1,c],[r,c+1],[r,c-1]].filter((p) => isOpen(maze,p)).length;
+        if (neighbors === 2) corridors++;
+      }
+      assert.ok(corridors >= 900, `Pasillos reconocibles: ${corridors}`);
+    }
+  }
 });
 
 test('El administrador puede generar nuevo mapa sin borrar ni desbloquear confirmaciones', () => {

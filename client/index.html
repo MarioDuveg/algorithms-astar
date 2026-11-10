@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#f6f9fb">
-  <meta name="description" content="Competencia de 20 estudiantes con A* e IDA* en un laberinto 65×65 de paredes discontinuas.">
+  <meta name="description" content="Competencia de 20 estudiantes con A* e IDA* en un laberinto conectado 65×65 con pasillos y salas.">
   <title>Maze Race · A* vs IDA*</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/styles.css">
@@ -71,7 +71,7 @@
     <div class="auth-visual" aria-hidden="true"><svg viewBox="0 0 380 116" fill="none"><rect x="122" y="5" width="110" height="106" rx="7" stroke="#64bda7" stroke-width="2"/><path d="M122 25h38v20h-18v20h34V31h33v28h-14v28h-22v24M232 34h-20v20M122 84h30V71h16" stroke="#4aa58f" stroke-width="5" stroke-linecap="square"/><path d="M185 52v19h23v15h24" stroke="#e7bd71" stroke-width="5"/><rect x="178" y="49" width="14" height="14" rx="3" fill="#e7bd71"/><circle cx="178" cy="2" r="5" fill="#4cc9a3"/><path d="M178 2v23" stroke="#4cc9a3" stroke-width="2" stroke-dasharray="3 3"/></svg></div>
     <span class="eyebrow">LABORATORIO DE BÚSQUEDA MULTIJUGADOR</span>
     <h2 id="auth-title">El centro te espera.</h2>
-    <p>Compite con A* o IDA* en un laberinto parcial 65×65. Hay 20 accesos aleatorios por las orillas, una sola meta central y cinco niveles de complejidad.</p>
+    <p>Compite con A* o IDA* en un laberinto conectado 65×65. Hay 20 accesos aleatorios por las orillas, una sola meta central y cinco niveles de complejidad.</p>
     <form id="login-form" autocomplete="on"><label for="login-name">NOMBRE DE USUARIO</label><input id="login-name" name="username" type="text" minlength="2" maxlength="24" placeholder="Escribe tu nombre" autocomplete="username" required autofocus><div id="password-field" hidden><label for="login-password">CONTRASEÑA DE ADMINISTRADOR</label><input id="login-password" name="password" type="password" placeholder="Contraseña" autocomplete="current-password"></div><button type="submit" class="btn btn-primary btn-wide">Entrar a la carrera <span>↗</span></button></form>
     <div id="login-error" class="auth-error" role="alert" hidden></div>
     <div class="auth-foot"><span><i></i> SESIÓN EN VIVO</span><span>NODE.JS + CANVAS</span></div>
