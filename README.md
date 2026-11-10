@@ -1,82 +1,72 @@
-# Maze Race — A* vs IDA*
+# Maze Race — A* vs IDA* · edición 20 estudiantes
 
-Arena **multijugador, en español**, para enseñar y competir con los algoritmos A* e IDA* en un **laberinto cuadrado compartido**. Adaptación del proyecto original Summit Lab. Conserva el inicio de sesión, el rol administrador, Start / Reset, las actualizaciones en vivo mediante SSE, el ranking y los recorridos visibles en Canvas 2D. No requiere paquetes externos.
+Carrera multijugador en español para comparar **A*** e **IDA*** sobre el **mismo laberinto cuadrado 65×65**. Basado en el proyecto original Summit Lab. Incluye acceso de estudiantes, administrador, botón Start/Reset, ranking de llegada, recorrido de cada buscador, cinco heurísticas y tema claro/oscuro. Solo necesita **Node.js 20 o superior**, sin paquetes npm externos.
 
-## Reglas de la carrera
+## Cambios de esta edición
 
-- Todos los participantes comienzan **fuera del laberinto**, en una de las cuatro puertas cardinales: norte, este, sur u oeste.
-- **Un mismo laberinto** para todos durante cada ronda. Tiene **simetría rotacional exacta de 90°**: los cuatro sectores contienen los mismos pasillos y obstáculos girados. Las cuatro entradas tienen **idéntica distancia óptima** hasta la celda central.
-- La entrada depende del orden de ingreso, asignada circularmente. Si hay más de cuatro competidores, comparten puertas (superposición visual). El orden de expansión de vecinos también se rota con la entrada para evitar ventajas en los desempates algorítmicos.
-- Cada jugador elige **A*** o **IDA*** y una de las cinco heurísticas. Ambos reciben el mismo presupuesto: **cuatro expansiones de nodos por pulso** (por defecto, cada 180 ms). La velocidad es deliberadamente pedagógica, no una medición de rendimiento de CPU.
-- Gana quien llega antes al centro según el **pulso de llegada y la expansión dentro de ese pulso**; llegadas simultáneas se consideran empate y comparten puesto. Antes de la llegada, la clasificación muestra un guion y el número de expansiones, no una posición provisional inventada.
-- El mapa muestra los agentes y sus rutas actuales, la ruta final una vez alcanzado el centro y (en el usuario propio) los nodos recientemente explorados. Permite hacer zoom con rueda, arrastrar, restablecer zoom o alternar los nodos explorados.
-- **Start** es exclusivo del administrador. **Reset** genera un nuevo laberinto simétrico para todos, borra el progreso y obliga a confirmar nuevas estrategias, sin cerrar sesiones.
+- **Tablero de 65×65 celdas** (antes 33×33), con paredes sueltas, obstáculos en L, segmentos cortos y patios de 5×5 o mayores. No es obligatorio que las paredes formen pasillos cerrados. El terreno se genera a partir de una semilla y se regenera con **Reset**.
+- **20 accesos exteriores exclusivos**, cinco en cada borde. Los lugares se sortean al crear el laberinto; su distribución también cambia al reiniciar. Cada estudiante recibe uno distinto en el momento de confirmar su estrategia.
+- El mapa sigue siendo el **mismo para todos**, con simetría rotacional de 90°. Para reducir la ventaja geográfica, las 20 posiciones se sortean dentro de una banda de longitud óptima de **como máximo cuatro pasos de diferencia**, calculada por búsqueda en anchura. Esto NO implica distancias exactamente iguales ni garantiza el mismo número de expansiones: la interfaz muestra la longitud óptima personal y el rango de la ronda. El origen exacto es aleatorio; no se debe interpretar la clasificación como una comparación experimental controlada únicamente de heurísticas.
+- Las cuatro avenidas centrales están interrumpidas por pequeños tramos de muro, pero se han abierto desvíos para **garantizar un camino** desde cualquiera de los 20 inicios hasta el centro. El borde exterior permanece transitable.
+- **Confirmar estrategia solo una vez por ronda:** la interfaz bloquea A*, IDA*, el selector de heurística y el botón. El **servidor también rechaza una segunda confirmación**, incluso al repetir manualmente la petición. Solo **Reset** permite elegir otra vez.
+- **Modo claro / modo oscuro**, desde el botón en la esquina superior derecha. Cambia toda la interfaz y los colores del Canvas; la preferencia queda guardada en el navegador.
+- Hasta **20 estudiantes y un administrador** conectados al mismo tiempo. El administrador dirige la carrera, sin ocupar una de las 20 posiciones.
 
-## Algoritmos y heurísticas
+## Reglas
 
-### A*
+Cada estudiante elige entre **A*** e **IDA*** y una heurística:
 
-Mantiene una frontera ordenada mediante montículo binario, con `f = g + h`. Utiliza costo acumulado `g`, el mejor costo por celda y predecesores para reconstruir un camino válido. Un nodo extraído con costo obsoleto se ignora. En cada expansión analiza hasta cuatro vecinos transitables.
-
-### IDA*
-
-Aplica búsqueda en profundidad iterativa con límite `f = g + h`. Cuando `f > límite` se registra el menor valor excedido, sin expandir esa rama. Una vez agotada la pasada se actualiza el límite y se reinicia la búsqueda desde la entrada. El retroceso evita ciclos en el camino **actual**; se implementó con una pila explícita para pausar la recursión entre pulsos, lo que permite visualizar las sucesivas iteraciones.
-
-| Heurística | Fórmula | ¿Garantiza camino óptimo?* |
-| --- | --- | --- |
+| Heurística | Fórmula | ¿Admisible en este tablero? |
+|---|---|---|
 | Manhattan | `abs(Δfila) + abs(Δcolumna)` | Sí |
-| Euclidiana | `sqrt(Δfila² + Δcolumna²)` | Sí |
-| Chebyshev | `max(abs(Δfila),abs(Δcolumna))` | Sí |
-| Cero / Dijkstra | `0` | Sí |
-| Manhattan × 1.5 | `1.5 × Manhattan` | **No** |
+| Euclidiana | `sqrt(Δfila²+Δcolumna²)` | Sí |
+| Chebyshev | `max(abs(Δfila), abs(Δcolumna))` | Sí |
+| Cero (Dijkstra) | `0` | Sí |
+| Manhattan × 1.5 | `1.5 × Manhattan` | No; puede producir caminos subóptimos |
 
-\* Con movimientos ortogonales de costo 1, este grafo finito y las condiciones implementadas. La heurística ponderada es intencionalmente no admisible, para demostrar la diferencia entre eficiencia exploratoria y garantía de optimalidad. En IDA* también puede modificar los límites de búsqueda significativamente.
+Los movimientos cuestan una unidad y se realizan solo en cuatro direcciones. Todos los algoritmos reciben **cuatro expansiones de nodos por pulso**, con un pulso por defecto de **180 ms**. Esto es una *simulación pedagógica de costos de búsqueda*, no una prueba de velocidad del procesador ni del navegador.
 
-## Cómo ejecutarlo
+IDA* utiliza una pila explícita con límites sucesivos de `f = g + h` y una tabla de mejores costos **reiniciada en cada iteración** para evitar repeticiones innecesarias en los espacios abiertos. Esta optimización consume más memoria que el IDA* clásico. **La heurística cero o Euclidiana en IDA*** puede realizar muchas más expansiones que Manhattan, incluso agotando el límite de protección de **100 000 expansiones** sin llegar; la interfaz registra la razón de finalización. Para una competición razonablemente corta se recomienda Manhattan.
 
-Necesitas **Node.js 20+**.
+El primer estudiante en llegar al centro encabeza el ranking. El orden lo determina el pulso y la expansión simulada de llegada. Quienes llegan en el mismo pulso y expansión comparten puesto. Las posiciones de inicio pueden tener hasta cuatro pasos de diferencia óptima, por lo que la prueba es una carrera desde ubicaciones próximas en dificultad, **no una medición estrictamente equivalente para comparar algoritmos**.
+
+El administrador inicia la competición con **Start**. Con **Reset** cambia el laberinto, sortea otras 20 posiciones, reinicia los resultados y desbloquea la elección para una nueva ronda. No se requiere cerrar sesión.
+
+## Ejecución local
 
 ```bash
 npm install
 npm start
 ```
 
-Abre **http://localhost:10000**. En varias pestañas, dispositivos o navegadores conectados al mismo servidor puedes representar estudiantes distintos.
+Abrir **http://localhost:10000**. Estudiantes en distintos equipos pueden acceder al mismo servidor si la red lo permite. Por ejemplo, en LAN pueden abrir `http://IP-DEL-SERVIDOR:10000`.
 
-- **Administrador:** usuario `admin`. La contraseña predeterminada *solo para demostración local* es `Admin2026`; en producción configura `ADMIN_PASSWORD`.
-- **Estudiantes:** nombres únicos de 2 a 24 caracteres, sin contraseña.
-- Los estudiantes confirman una estrategia antes de Start. No se pueden hacer cambios en medio de la ronda.
-- En Render, sube el repositorio a GitHub/GitLab y usa el archivo `render.yaml` o crea un Web Service con `npm install` / `npm start`. Configura **`ADMIN_PASSWORD`** como secreto; **nunca publiques la contraseña de demostración**.
-
-### Pruebas
+- Administrador: usuario `admin` y contraseña de **demostración local** `Admin2026`.
+- Estudiante: nombre único de 2 a 24 caracteres. No se necesita contraseña.
+- En internet / Render: establece `ADMIN_PASSWORD` con una contraseña segura. No publiques la predeterminada ni ejecutes varias instancias independientes del servidor (el estado está en memoria).
 
 ```bash
 npm run check
 npm test
 ```
 
-Incluyen: simetría del laberinto, igualdad de caminos óptimos desde las cuatro puertas, invariancia de expansiones respecto de la entrada, validez de rutas, optimalidad con heurísticas admisibles, crecimiento de umbrales de IDA*, clasificación y empates, controles del administrador y ciclo de vida de la API.
+Las pruebas incluyen 65×65, muro incompleto, patios abiertos, simetría, 20 entradas de borde diferentes, rutas siempre posibles y con distancias cercanas, A*/IDA*, umbrales, capacidad máxima, bloqueo de confirmación en servidor, API, Start/Reset y el tema oscuro.
 
 ## Estructura
 
 ```text
-client/index.html       Pantalla de acceso, mapa y paneles
-client/styles.css       Estilos responsivos
-client/app.js           Eventos, formularios, ranking y SSE
-client/maze2d.js        Vista Canvas con rutas y agentes
-shared/maze.js          Generación determinista y simétrica del laberinto
-shared/algorithms.js    A*, IDA*, heurísticas y ejecución por expansión
-server/room.js          Sala, participantes y reglas de carrera
-server/index.js         Servidor web y API (sin dependencias)
-tests/                  Pruebas de algoritmos e integración
+client/index.html       Acceso, interfaz, botón de tema y opciones
+client/app.js           Selección única, ranking y eventos SSE
+client/styles.css       Temas claro/oscuro y diseño adaptable
+client/maze2d.js        Dibujo del laberinto y sus 20 inicios
+shared/maze.js          Generación 65×65, cuatro sectores y sorteos
+shared/algorithms.js    A*, IDA*, heurísticas y expansiones
+server/room.js          Control de las 20 plazas y bloqueo de estrategia
+server/index.js         API y servidor Node.js
 render.yaml             Despliegue en Render
+tests/                  Pruebas unitarias e integración
 ```
 
-## Notas técnicas
+## Consideraciones
 
-- Laberinto de 33×33 celdas, un único centro, costo 1 por movimiento y cuatro vecinos ortogonales. Cada sector se construye con DFS aleatorizada y luego se rota tres veces. Las puertas de la primera ronda se crean con una semilla fija para permitir ejemplos reproducibles; cada Reset genera otra semilla compartida.
-- La simulación es autoritativa en el servidor: el navegador no puede enviar movimientos, posiciones o resultados. Los estados se envían por Server-Sent Events (SSE).
-- Los tiempos en el ranking son **tiempos de simulación** basados en pulsos y expansiones, no microbenchmarks. La visualización del recorrido de A* representa la ruta de padres del nodo expandido actualmente, no una caminata continua del agente en tiempo físico.
-- La heurística cero en IDA* puede requerir muchas iteraciones; se limita a 100 000 expansiones por agente como protección.
-- El estado está en memoria, es adecuado para un servidor de clase de una única instancia y se pierde al reiniciar la aplicación. Un servidor en Render gratuito puede suspenderse por inactividad.
-- La ronda se termina cuando han acabado todos los participantes. Si un jugador se desconecta, su agente queda pausado hasta volver a conectarse o salir de la sala.
+La simulación conserva el estado **solo en memoria**. Si se reinicia el servidor o se crea otra instancia, se perderá la sala; no se guarda una base de datos. La desconexión de un estudiante detiene temporalmente su agente y, tras un tiempo, puede retirar su sesión. En la interfaz, los nodos visitados se muestran para el propio jugador; en posiciones superpuestas se agrupan fichas para mejorar la visualización. El modo oscuro se guarda por navegador, no en el servidor.

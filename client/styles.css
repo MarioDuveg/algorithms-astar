@@ -271,3 +271,114 @@ html,body { background: var(--bg);color:var(--text) }
   .my-hud strong {font-size:17px}
   .auth-visual svg {height:100%}
 }
+
+/* Tema oscuro conmutador: paleta completa, incluidos mapa, paneles y acceso. */
+.theme-toggle {display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:8px 10px;
+  color:#366567;background:#eef7f5;border:1px solid #cce2dc;border-radius:8px;
+  font-size:11px;font-weight:800;white-space:nowrap}
+.theme-toggle:hover {background:#def0e9}
+.theme-toggle #theme-icon {font-size:15px;line-height:1}
+button:focus-visible,select:focus-visible,input:focus-visible {outline:2px solid #18ad90;outline-offset:2px}
+.algo-card:disabled {cursor:not-allowed;opacity:.67}
+.algo-card.ready:disabled {opacity:1;border-color:#58b99b}
+
+html[data-theme="dark"] {color-scheme:dark;--bg:#07131a;--panel:#0c1b23;--panel2:#10232c;--line:#20343d;--line2:#2b424b;--text:#e9f2f0;--muted:#889fa4;--faint:#5c7980;--mint:#62dfbf;--mint-2:#3dbf9d;--gold:#efd08d}
+html[data-theme="dark"] .topbar {background:#0b1a21;border-bottom-color:#20343d;box-shadow:none}
+html[data-theme="dark"] .brand-symbol {background:#123b39;border-color:#26564f;color:#62dfbf;box-shadow:inset 0 1px 0 #25605c}
+html[data-theme="dark"] .brand-contrast {color:#62dfbf}
+html[data-theme="dark"] .brand small {color:#79959b}
+html[data-theme="dark"] .topbar-center {color:#a9babc}
+html[data-theme="dark"] .live-dot {background:#62dfbf;box-shadow:0 0 12px #4ce6bd8f}
+html[data-theme="dark"] .account-box {color:#c9d5d3}
+html[data-theme="dark"] .avatar {background:#264940;border-color:#326956;color:#87e6c7}
+html[data-theme="dark"] .icon-btn {color:#93acae}
+html[data-theme="dark"] .admin-tag {border-color:#685435;background:#40311c;color:#f0ce8e}
+html[data-theme="dark"] .btn-primary {background:#62dfbf;border-color:#62dfbf;color:#07372f;box-shadow:0 2px 14px #37c49d1b}
+html[data-theme="dark"] .btn-primary:hover:not(:disabled) {background:#85edcd}
+html[data-theme="dark"] .btn-outline {background:#13242a;border-color:#45606a;color:#d2e4dd}
+html[data-theme="dark"] .btn-outline:hover:not(:disabled) {background:#1c3540}
+html[data-theme="dark"] .panel {background:#0c1b23}
+html[data-theme="dark"] .panel-heading p {color:#8ca4a7}
+html[data-theme="dark"] .panel-heading h2 {color:#e9f2f0}
+html[data-theme="dark"] .eyebrow {color:#62dfbf}
+html[data-theme="dark"] .algo-card {background:#10232b;border-color:#203640}
+html[data-theme="dark"] .algo-card:hover:not(:disabled) {background:#15313a;border-color:#49766d}
+html[data-theme="dark"] .algo-card.active {background:linear-gradient(125deg,#173f3d,#112d32);border-color:#47a58e;box-shadow:inset 3px 0 0 #62dfbf}
+html[data-theme="dark"] .algo-card.ready:disabled {border-color:#47a58e}
+html[data-theme="dark"] .algo-number {background:#1b333b;border-color:#35505a;color:#80a5a8}
+html[data-theme="dark"] .algo-card.active .algo-number {background:#31594f;color:#a0f2d9;border-color:#438d78}
+html[data-theme="dark"] .algo-info small {color:#90a9aa}
+html[data-theme="dark"] .algo-info em {color:#77bcae}
+html[data-theme="dark"] .algo-card:last-child .algo-info em {color:#efc984}
+html[data-theme="dark"] .rule {background:#294047}
+html[data-theme="dark"] .config-title {color:#d7e8e4}
+html[data-theme="dark"] .config-title span:last-child {color:#608b8c}
+html[data-theme="dark"] .parameter-top {color:#aec3c3}
+html[data-theme="dark"] .parameter-top strong {color:#e7f2ec}
+html[data-theme="dark"] .parameter-help,html[data-theme="dark"] .note {color:#91aeb2}
+html[data-theme="dark"] .note.note-ready {color:#76d4b8}
+html[data-theme="dark"] .param-select {background:#142b33;border-color:#37575c;color:#e0f0ec}
+html[data-theme="dark"] .algo-description {color:#acc1c2}
+html[data-theme="dark"] .heuristic-detail {color:#99b7b9}
+html[data-theme="dark"] .formula {background:#112d31;border-color:#2a514c;color:#81e5c9}
+html[data-theme="dark"] .fairness-tip {background:#14362e;border-left-color:#54d9b5;color:#a4d1c3}
+html[data-theme="dark"] .fairness-tip strong {color:#9ff1d7}
+html[data-theme="dark"] .map-panel {background:radial-gradient(ellipse at 50% 42%,#1c3b43 0%,#08171f 69%,#071018 100%)}
+html[data-theme="dark"] .map-panel:before {background-image:radial-gradient(#3d6265 .75px,transparent .75px)}
+html[data-theme="dark"] .map-top-left h1 {color:#e9f2f0}
+html[data-theme="dark"] .map-kicker {color:#8ab8b1}
+html[data-theme="dark"] .map-top-left p {color:#96b2b7}
+html[data-theme="dark"] .summit-indicator {background:#0a2027de;border-color:#3a5654aa;box-shadow:0 5px 20px #0018222a}
+html[data-theme="dark"] .summit-indicator small {color:#99b6b4}
+html[data-theme="dark"] .summit-indicator strong {color:#f5deac}
+html[data-theme="dark"] .summit-diamond {color:#efd08d}
+html[data-theme="dark"] .map-controls button {color:#c8e8dd;background:#112b34dd;border-color:#36565c;box-shadow:none}
+html[data-theme="dark"] .map-controls button:hover,html[data-theme="dark"] .map-controls button.active {color:#62dfbf;border-color:#62dfbf;background:#21433e}
+html[data-theme="dark"] .legend>span {color:#a3bfc0}
+html[data-theme="dark"] .map-help {color:#6f9aa0}
+html[data-theme="dark"] .map-prompt {background:#092127e8;border-color:#395c59;box-shadow:0 18px 70px #020d1477}
+html[data-theme="dark"] .map-prompt-icon {color:#62dfbf}
+html[data-theme="dark"] .map-prompt strong {color:#e9f2f0}
+html[data-theme="dark"] .map-prompt span:last-child {color:#9db5b6}
+html[data-theme="dark"] .my-hud {background:#0b232be8;border-color:#31575a9c;box-shadow:none}
+html[data-theme="dark"] .my-hud>div+div {border-color:#315052}
+html[data-theme="dark"] .my-hud small {color:#81aaa9}
+html[data-theme="dark"] .my-hud strong {color:#e9f5ef}
+html[data-theme="dark"] .stat-strip {background:#0e252d;border-color:#223e45}
+html[data-theme="dark"] .stat-strip>div+div {border-color:#294147}
+html[data-theme="dark"] .stat-strip strong {color:#e9f2f0}
+html[data-theme="dark"] .stat-strip span {color:#86a7aa}
+html[data-theme="dark"] .leaderboard-top {color:#7c999e}
+html[data-theme="dark"] .leaderboard-top span:last-child {color:#829fa2}
+html[data-theme="dark"] .rank-item {background:#10232b;border-color:#20343d}
+html[data-theme="dark"] .rank-item.is-me {border-color:#397367;background:#163932}
+html[data-theme="dark"] .rank-number {color:#8cb2b4}
+html[data-theme="dark"] .rank-main small {color:#9eb8b8}
+html[data-theme="dark"] .rank-score strong {color:#b4e7ce}
+html[data-theme="dark"] .rank-score small {color:#849fa2}
+html[data-theme="dark"] .rank-finished {background:#293024;border-color:#5a5a39}
+html[data-theme="dark"] .rank-finished .rank-score strong {color:#efd08d}
+html[data-theme="dark"] .empty-rank {color:#a0b7bb;border-color:#315058}
+html[data-theme="dark"] .right-footer>.eyebrow {color:#91b1b2}
+html[data-theme="dark"] .room-player {color:#b1c8c5}
+html[data-theme="dark"] .room-player-name i {background:#46616b}
+html[data-theme="dark"] .room-player small {color:#9cbbb8}
+html[data-theme="dark"] .system-note {border-color:#253e46;color:#a0bbbe}
+html[data-theme="dark"] .auth-screen {background:#041016e8;backdrop-filter:blur(7px)}
+html[data-theme="dark"] .auth-glow {background:radial-gradient(ellipse,#2d7f666b 0%,transparent 70%)}
+html[data-theme="dark"] .auth-card {background:linear-gradient(155deg,#122e37,#0a1c25 55%,#0a1a23);border-color:#3a625f;box-shadow:0 36px 110px #000a10aa,inset 0 1px 0 #46746b66}
+html[data-theme="dark"] .auth-eyebrow {color:#94c4b7}
+html[data-theme="dark"] .mini-diamond {color:#62dfbf}
+html[data-theme="dark"] .auth-card .eyebrow {color:#81dfc7}
+html[data-theme="dark"] .auth-card h2 {color:#e9f2f0}
+html[data-theme="dark"] .auth-card>p {color:#9db9bc}
+html[data-theme="dark"] .auth-card label {color:#a1bbb9}
+html[data-theme="dark"] .auth-card input {background:#081821;border-color:#31515b;color:#fff}
+html[data-theme="dark"] .auth-card input::placeholder {color:#8aa4a7}
+html[data-theme="dark"] .auth-error {color:#ffd0c6}
+html[data-theme="dark"] .auth-foot {border-color:#325059;color:#90b5b6}
+html[data-theme="dark"] .toast {background:#163e3b;border-color:#4ab59a;color:#ddfff4}
+html[data-theme="dark"] .toast.error {background:#4b252a;border-color:#cb6b70;color:#ffe0da}
+html[data-theme="dark"] .theme-toggle {background:#142b33;border-color:#35575b;color:#b3e7d6}
+html[data-theme="dark"] .theme-toggle:hover {background:#20433e}
+@media (max-width:680px) {.theme-toggle {padding:7px 8px}.theme-toggle #theme-label {display:none}}

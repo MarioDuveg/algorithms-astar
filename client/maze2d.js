@@ -1,4 +1,4 @@
-const COLORS = ['#16927d', '#5565d6', '#d17e3f', '#a458b8', '#248cb9', '#bf5865', '#898536', '#45966e'];
+const COLORS = ['#16927d','#5565d6','#d17e3f','#a458b8','#248cb9','#bf5865','#898536','#45966e','#ed6b9a','#ac7c3d','#396fa6','#f08e52','#7b54c7','#45a39c','#bc608a','#689f42','#c86d55','#2d76a1','#b98c2e','#6e6bc9'];
 export function agentColor(player, meId) {
   return player.id === meId ? '#0d927c' : COLORS[(player.order - 1) % COLORS.length];
 }
@@ -47,6 +47,7 @@ export class MazeView {
     ctx.clearRect(0, 0, width, height);
     if (!this.state?.maze) return;
     const { maze, players } = this.state;
+    const dark = document.documentElement.dataset.theme === 'dark';
     const n = maze.size;
     // Dejar espacio visible para encabezado y HUD superpuestos.
     const top = height > 480 ? 119 : 104;
@@ -59,29 +60,35 @@ export class MazeView {
     const XY = (p) => [left + (p[1] + .5) * cell, originY + (p[0] + .5) * cell];
 
     ctx.save();
-    ctx.shadowColor = '#254e5a22'; ctx.shadowBlur = 20;
-    ctx.fillStyle = '#dfeae8'; ctx.fillRect(left - 8, originY - 8, cell * n + 16, cell * n + 16);
+    ctx.shadowColor = dark ? '#00000066' : '#254e5a22'; ctx.shadowBlur = 20;
+    ctx.fillStyle = dark ? '#304f59' : '#dfeae8'; ctx.fillRect(left - 8, originY - 8, cell * n + 16, cell * n + 16);
     ctx.shadowBlur = 0;
-    ctx.fillStyle = '#fdfefd'; ctx.fillRect(left, originY, cell * n, cell * n);
+    ctx.fillStyle = dark ? '#102932' : '#fdfefd'; ctx.fillRect(left, originY, cell * n, cell * n);
     for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
       const x = left + c * cell, y = originY + r * cell;
       if (maze.grid[r][c] === '#') {
-        ctx.fillStyle = '#284e59';
+        ctx.fillStyle = dark ? '#497884' : '#284e59';
         ctx.fillRect(x, y, cell + .5, cell + .5);
         if (cell > 6) {
-          ctx.fillStyle = '#416977';
+          ctx.fillStyle = dark ? '#79aab3' : '#416977';
           ctx.fillRect(x + cell * .1, y + cell * .08, cell * .8, Math.max(.7, cell * .10));
         }
       } else if (cell > 10) {
-        ctx.fillStyle = '#eaf1f0';
+        ctx.fillStyle = dark ? '#16353e' : '#eaf1f0';
         ctx.fillRect(x + cell * .08, y + cell * .08, cell * .84, cell * .84);
       }
     }
 
+    // Marcar discretamente los 20 puntos posibles de arranque en las orillas.
+    for (const p of maze.spawns) {
+      const [x, y] = XY(p);
+      ctx.beginPath(); ctx.arc(x, y, Math.max(1.3, Math.min(3, cell * .30)), 0, Math.PI * 2);
+      ctx.fillStyle = dark ? '#e9af70' : '#c48a4f'; ctx.fill();
+    }
     const own = players.find((p) => p.id === this.meId);
     if (this.trails && own?.explored?.length) {
       const unique = new Set(own.explored.map(([r, c]) => `${r},${c}`));
-      ctx.fillStyle = '#24b79e63';
+      ctx.fillStyle = dark ? '#5ce3bc99' : '#24b79e63';
       for (const key of unique) {
         const [r, c] = key.split(',').map(Number);
         ctx.fillRect(left + c * cell + cell * .2, originY + r * cell + cell * .2, cell * .6, cell * .6);
@@ -96,7 +103,7 @@ export class MazeView {
         const [x, y] = XY(point);
         if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
       });
-      ctx.strokeStyle = p.arrivedAt !== null ? (isMine ? '#05957b' : '#4c83bf') : (isMine ? '#0d9c84b8' : '#849fc19a');
+      ctx.strokeStyle = p.arrivedAt !== null ? (isMine ? '#1bc8a5' : '#6eabf1') : (isMine ? '#0dba9db8' : dark ? '#729dccb0' : '#849fc19a');
       ctx.lineWidth = isMine ? Math.max(2, cell * .42) : Math.max(1.5, cell * .17);
       ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.stroke();
     }
@@ -118,6 +125,17 @@ export class MazeView {
     }
     for (const group of byCell.values()) {
       const [cx, cy] = XY([group[0].x, group[0].z]);
+      // Las 20 fichas pueden coincidir: mostrar un contador en vez de ocultarlas.
+      if (group.length > 3) {
+        const mine = group.some((p) => p.id === this.meId);
+        const r = Math.max(5, Math.min(11, cell * .85));
+        ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.fillStyle = mine ? '#0b9e82' : (dark ? '#6184c9' : '#486aa3'); ctx.fill();
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = mine ? 2 : 1; ctx.stroke();
+        ctx.fillStyle = '#fff'; ctx.font = `700 ${Math.max(8, Math.min(12, r))}px system-ui`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(group.length, cx, cy);
+        continue;
+      }
       group.forEach((p, i) => {
         const a = i * Math.PI * 2 / Math.min(5, group.length);
         const radius = group.length === 1 ? 0 : Math.min(cell * .26, 5);
@@ -129,14 +147,6 @@ export class MazeView {
         ctx.strokeStyle = '#fff'; ctx.stroke();
       });
     }
-    // Etiquetas de entrada en los cuatro puntos del exterior.
-    const labels = ['N', 'E', 'S', 'O'];
-    maze.spawns.forEach((p, i) => {
-      const [x, y] = XY(p);
-      ctx.font = `700 ${Math.max(8, Math.min(12, cell * .72))}px system-ui`;
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillStyle = '#ffffff'; ctx.fillText(labels[i], x, y);
-    });
     ctx.restore();
   }
 }

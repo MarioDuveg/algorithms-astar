@@ -1,4 +1,4 @@
-import { cellKey, directionsFor, isOpen } from './maze.js';
+import { cellKey, directionsFor, isOpen, spawnSide } from './maze.js';
 
 export const ALGORITHMS = Object.freeze([
   { id: 'astar', name: 'A*', short: 'Cola de prioridad · f = g + h', kind: 'Búsqueda informada', description: 'Selecciona el nodo con menor f = g + h. Conserva la frontera y los mejores costos conocidos.', color: '#138c7b' },
@@ -60,7 +60,7 @@ const pos = (p) => [...p];
 
 export function createAgent(maze, spawnIndex, algorithm, rawParams = {}) {
   if (!ALGORITHMS.some((a) => a.id === algorithm)) throw new Error('Algoritmo no válido');
-  if (!Number.isInteger(spawnIndex) || spawnIndex < 0 || spawnIndex > 3) throw new Error('Entrada no válida');
+  if (!Number.isInteger(spawnIndex) || spawnIndex < 0 || spawnIndex >= maze.spawns.length) throw new Error('Entrada no válida');
   const params = normalizeParams(rawParams);
   const start = pos(maze.spawns[spawnIndex]), goal = pos(maze.center);
   const h = heuristic(start, goal, params.heuristic);
@@ -70,7 +70,7 @@ export function createAgent(maze, spawnIndex, algorithm, rawParams = {}) {
     iterations: 1, limit: algorithm === 'ida' ? h : null,
     steps: 0, distance: null, arrivedAt: null, finishTick: null,
     path: [start], explored: [], maze,
-    dirs: directionsFor(spawnIndex), seq: 0, seen: new Set(),
+    dirs: directionsFor(spawnSide(maze, start)), seq: 0, seen: new Set(),
   };
   if (algorithm === 'astar') {
     agent.heap = [];
@@ -81,6 +81,9 @@ export function createAgent(maze, spawnIndex, algorithm, rawParams = {}) {
     agent.stack = [{ p: start, g: 0, next: 0, expanded: false }];
     agent.onPath = new Set([cellKey(start)]);
     agent.nextLimit = Infinity;
+    // Tabla de mejores costos por iteración: evita repeticiones exponenciales
+    // en las zonas abiertas del laberinto. Aumenta el uso de memoria de IDA*.
+    agent.bestG = new Map();
   }
   return agent;
 }
@@ -147,6 +150,7 @@ export function stepAgent(agent) {
       if (!Number.isFinite(agent.nextLimit)) { finishWithoutPath(agent); break; }
       agent.limit = agent.nextLimit;
       agent.nextLimit = Infinity;
+      agent.bestG = new Map();
       agent.iterations++;
       agent.stack = [{ p: agent.start, g: 0, next: 0, expanded: false }];
       agent.onPath = new Set([cellKey(agent.start)]);
@@ -159,6 +163,12 @@ export function stepAgent(agent) {
       continue;
     }
     if (!frame.expanded) {
+      const k = cellKey(frame.p);
+      if ((agent.bestG.get(k) ?? Infinity) <= frame.g) {
+        agent.stack.pop(); agent.onPath.delete(k);
+        continue;
+      }
+      agent.bestG.set(k, frame.g);
       frame.expanded = true;
       visit(agent, frame.p, agent.stack.map((v) => v.p));
       if (cellKey(frame.p) === cellKey(agent.goal)) arrive(agent, agent.stack.map((v) => v.p));

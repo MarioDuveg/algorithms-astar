@@ -1,9 +1,9 @@
 {
   "name": "maze-race-astar-ida",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "private": true,
   "type": "module",
-  "description": "Arena multijugador 2D de A* e IDA* con heurísticas y laberinto simétrico.",
+  "description": "Carrera de 20 estudiantes con A*, IDA*, laberinto 65×65 incompleto y tema oscuro.",
   "engines": { "node": ">=20" },
   "scripts": {
     "start": "node server/index.js",

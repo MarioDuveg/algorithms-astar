@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#f6f9fb">
-  <meta name="description" content="Carrera multijugador de búsqueda A* e IDA* en un laberinto simétrico.">
+  <meta name="description" content="Competencia de 20 estudiantes con A* e IDA* en un laberinto 65×65 de paredes discontinuas.">
   <title>Maze Race · A* vs IDA*</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/styles.css">
@@ -15,6 +15,7 @@
     <div class="brand"><span class="brand-symbol" aria-hidden="true"><svg width="29" height="29" viewBox="0 0 32 32" fill="none"><path d="M3 3h26v26H3V3Zm7 0v10h9v9h-9v7m19-18h-8v8h-8" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><path d="M15 17h6" stroke="#d0a04c" stroke-width="2.5"/></svg></span><span><strong>MAZE<span class="brand-contrast">RACE</span></strong><small>ARENA DE BÚSQUEDA</small></span></div>
     <div class="topbar-center"><span class="live-dot"></span><span id="phase-label">SALA DE ESPERA</span><span class="top-divider"></span><span id="round-label">RONDA 01</span></div>
     <div class="topbar-right">
+      <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Activar modo oscuro" title="Cambiar tema"><span id="theme-icon">☾</span><span id="theme-label">Oscuro</span></button>
       <div id="admin-controls" class="admin-controls" hidden>
         <span class="admin-tag">ADMIN</span>
         <button id="start-btn" class="btn btn-primary btn-sm" type="button"><span class="play-triangle">▶</span> Start</button>
@@ -32,25 +33,25 @@
         <div class="config-title"><span>PARÁMETROS</span><span id="param-subtitle">CONFIGURACIÓN</span></div>
         <div id="params-panel" class="params-panel"></div>
         <button id="select-btn" type="button" class="btn btn-primary btn-wide">Confirmar estrategia <span>→</span></button>
-        <p id="selection-note" class="note">Puedes cambiar tu algoritmo antes de Start.</p>
+        <p id="selection-note" class="note">La selección solo se puede confirmar una vez por ronda.</p>
       </div>
     </aside>
     <section class="map-panel" aria-label="Laberinto cuadrado compartido">
       <canvas id="terrain-canvas" aria-label="Mapa del laberinto y exploración de agentes"></canvas>
       <div id="labels-layer" class="labels-layer" aria-hidden="true"></div>
-      <div class="map-top-left"><span class="map-kicker"><span class="kicker-square"></span> LABERINTO / EN DIRECTO</span><h1>Llega al centro.</h1><p>Cuatro entradas equivalentes. Un mismo centro.</p></div>
-      <div class="map-top-right"><div class="summit-indicator"><span class="summit-diamond">◆</span><span><small>RUTA ÓPTIMA / PASOS</small><strong id="optimal-length">—</strong></span></div></div>
+      <div class="map-top-left"><span class="map-kicker"><span class="kicker-square"></span> LABERINTO / EN DIRECTO</span><h1>Llega al centro.</h1><p>20 posiciones exteriores aleatorias. Un centro compartido.</p></div>
+      <div class="map-top-right"><div class="summit-indicator"><span class="summit-diamond">◆</span><span><small>RUTAS ÓPTIMAS / PASOS</small><strong id="optimal-length">—</strong></span></div></div>
       <div class="map-controls"><button id="home-camera" type="button" title="Restablecer zoom" aria-label="Restablecer zoom">⌖</button><button id="spin-camera" type="button" title="Acercar mapa" aria-label="Acercar mapa">+</button><button id="toggle-trails" type="button" title="Mostrar u ocultar nodos explorados" aria-label="Mostrar u ocultar nodos explorados">◫</button></div>
       <div class="map-bottom-left"><div class="legend"><span><i class="legend-dot legend-me"></i> Tu agente</span><span><i class="legend-dot legend-other"></i> Otros</span><span><i class="legend-dot legend-summit"></i> Meta central</span></div><span class="map-help">RUEDA PARA ZOOM · ARRASTRAR PARA MOVER</span></div>
-      <div id="map-prompt" class="map-prompt"><span class="map-prompt-icon">◎</span><strong>La carrera está por comenzar</strong><span>Elige un algoritmo y una heurística. Tu agente aparecerá en una de las cuatro entradas exteriores.</span></div>
+      <div id="map-prompt" class="map-prompt"><span class="map-prompt-icon">◎</span><strong>La carrera está por comenzar</strong><span>Elige un algoritmo y una heurística. Tu agente aparecerá al azar en una de las orillas.</span></div>
       <div id="my-hud" class="my-hud" hidden><div><small>EXPANSIONES</small><strong id="hud-expansions">0.0</strong></div><div><small>CAMINO / PASOS</small><strong id="hud-distance">0.0</strong></div><div><small>ITERACIONES</small><strong id="hud-iterations">0</strong></div><div id="hud-temp-block" hidden><small>LÍMITE ƒ</small><strong id="hud-temp">0.00</strong></div></div>
     </section>
     <aside class="right-panel panel">
       <div class="panel-pad panel-heading ranking-heading"><span class="eyebrow">02 / COMPETICIÓN</span><h2>Clasificación <span class="trophy">✦</span></h2><p>Gana quien alcance antes el centro. Los empates son compartidos.</p></div>
-      <div class="stat-strip"><div><strong id="users-count">00</strong><span>CONECTADOS</span></div><div><strong id="ready-count">00</strong><span>LISTOS</span></div><div><strong id="time-counter">00:00</strong><span>TIEMPO</span></div></div>
+      <div class="stat-strip"><div><strong id="users-count">00</strong><span>EN SALA</span></div><div><strong id="ready-count">00</strong><span>LISTOS</span></div><div><strong id="time-counter">00:00</strong><span>TIEMPO</span></div></div>
       <div class="leaderboard-top"><span>RANKING EN VIVO</span><span>LLEGADA / EXPLORACIÓN</span></div>
       <div id="leaderboard" class="leaderboard"><div class="empty-rank">Cuando comience la ronda, los participantes aparecerán aquí.</div></div>
-      <div class="right-footer"><span class="eyebrow">JUGADORES EN SALA</span><div id="room-players" class="room-players"></div><div class="system-note"><span class="live-dot"></span> Mismo laberinto por ronda · 4 entradas rotadas a igual distancia.</div></div>
+      <div class="right-footer"><span class="eyebrow">JUGADORES EN SALA</span><div id="room-players" class="room-players"></div><div class="system-note"><span class="live-dot"></span> Un mapa 65×65 con claros y muros incompletos · 20 inicios únicos con distancias cercanas.</div></div>
     </aside>
   </main>
 </div>
@@ -62,7 +63,7 @@
     <div class="auth-visual" aria-hidden="true"><svg viewBox="0 0 380 116" fill="none"><rect x="122" y="5" width="110" height="106" rx="7" stroke="#64bda7" stroke-width="2"/><path d="M122 25h38v20h-18v20h34V31h33v28h-14v28h-22v24M232 34h-20v20M122 84h30V71h16" stroke="#4aa58f" stroke-width="5" stroke-linecap="square"/><path d="M185 52v19h23v15h24" stroke="#e7bd71" stroke-width="5"/><rect x="178" y="49" width="14" height="14" rx="3" fill="#e7bd71"/><circle cx="178" cy="2" r="5" fill="#4cc9a3"/><path d="M178 2v23" stroke="#4cc9a3" stroke-width="2" stroke-dasharray="3 3"/></svg></div>
     <span class="eyebrow">LABORATORIO DE BÚSQUEDA MULTIJUGADOR</span>
     <h2 id="auth-title">El centro te espera.</h2>
-    <p>Entra en un laberinto simétrico compartido y compite con A* o IDA*. Todos parten desde fuera, a la misma distancia óptima del centro.</p>
+    <p>Compite con A* o IDA* en un laberinto parcial 65×65. Hay 20 accesos aleatorios por las orillas, con dificultad similar y una sola meta central.</p>
     <form id="login-form" autocomplete="on"><label for="login-name">NOMBRE DE USUARIO</label><input id="login-name" name="username" type="text" minlength="2" maxlength="24" placeholder="Escribe tu nombre" autocomplete="username" required autofocus><div id="password-field" hidden><label for="login-password">CONTRASEÑA DE ADMINISTRADOR</label><input id="login-password" name="password" type="password" placeholder="Contraseña" autocomplete="current-password"></div><button type="submit" class="btn btn-primary btn-wide">Entrar a la carrera <span>↗</span></button></form>
     <div id="login-error" class="auth-error" role="alert" hidden></div>
     <div class="auth-foot"><span><i></i> SESIÓN EN VIVO</span><span>NODE.JS + CANVAS</span></div>

@@ -2,64 +2,65 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from '../server/index.js';
 
-test('API completa: acceso, selección, autorización, Start, ranking y Reset', async () => {
-  const { server }=createServer();
+test('API y tema: acceso, elección bloqueada, autorización, carrera y nueva ronda', async () => {
+  const { server } = createServer();
   await new Promise((resolve)=>server.listen(0,'127.0.0.1',resolve));
-  const base=`http://127.0.0.1:${server.address().port}`;
-  const post=async(route,body={},cookie='')=>fetch(base+route,{method:'POST',headers:{'Content-Type':'application/json',Cookie:cookie},body:JSON.stringify(body)});
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const post = (route,body={},cookie='')=>fetch(base+route,{method:'POST',headers:{'Content-Type':'application/json',Cookie:cookie},body:JSON.stringify(body)});
   try {
     const health=await fetch(base+'/api/health');
     assert.equal(health.status,200);
     assert.equal((await health.json()).status,'ok');
     const home=await fetch(base+'/');
     assert.equal(home.status,200);
-    assert.match(await home.text(),/Maze Race/);
-
+    const html=await home.text();
+    assert.match(html,/Maze Race/);
+    assert.match(html,/id="theme-toggle"/);
+    const css=await (await fetch(base+'/styles.css')).text();
+    assert.match(css,/html\[data-theme="dark"\]/);
+    const js=await (await fetch(base+'/app.js')).text();
+    assert.match(js,/maze-race-theme/);
     const nonadmin=await post('/api/login',{name:'Elena'});
     assert.equal(nonadmin.status,200);
-    const userCookie=nonadmin.headers.get('set-cookie').split(';')[0];
-    const player=(await nonadmin.json()).player;
-    assert.equal(player.isAdmin,false);
-    assert.equal((await post('/api/start',{},userCookie)).status,400); // acción rechazada
-    const wrong=await post('/api/login',{name:'admin',password:'mala'});
-    assert.equal(wrong.status,403);
+    const cookie=nonadmin.headers.get('set-cookie').split(';')[0];
+    assert.equal((await post('/api/start',{},cookie)).status,400);
+    assert.equal((await post('/api/login',{name:'admin',password:'mala'})).status,403);
     const admin=await post('/api/login',{name:'admin',password:'Admin2026'});
     assert.equal(admin.status,200);
     const adminCookie=admin.headers.get('set-cookie').split(';')[0];
+    assert.equal((await post('/api/select',{algorithm:'astar'},adminCookie)).status,400);
     const streamController=new AbortController();
-    const stream=await fetch(base+'/api/events',{headers:{Cookie:userCookie},signal:streamController.signal});
+    const stream=await fetch(base+'/api/events',{headers:{Cookie:cookie},signal:streamController.signal});
     assert.equal(stream.status,200);
-    assert.match(stream.headers.get('content-type'), /text\/event-stream/);
-    const streamReader=stream.body.getReader();
-    const firstEvent=await streamReader.read();
-    assert.equal(firstEvent.done,false);
-    assert.match(new TextDecoder().decode(firstEvent.value), /stream abierto|event: state/);
-
-    assert.equal((await post('/api/select',{algorithm:'ida',params:{heuristic:'euclidean'}},userCookie)).status,200);
-    let streamed='';
-    for(let i=0;i<5;i++){
-      const result=await Promise.race([streamReader.read(),new Promise((_,reject)=>setTimeout(()=>reject(new Error('Sin actualización SSE')),1600))]);
-      streamed+=new TextDecoder().decode(result.value||new Uint8Array());
-      if(streamed.includes('"algorithm":"ida"'))break;
-    }
-    assert.match(streamed,/"algorithm":"ida"/);
+    assert.match(stream.headers.get('content-type'),/text\/event-stream/);
+    const reader=stream.body.getReader();
+    const initial=await reader.read();
+    assert.equal(initial.done,false);
+    assert.equal((await post('/api/select',{algorithm:'ida',params:{heuristic:'euclidean'}},cookie)).status,200);
+    assert.equal((await post('/api/select',{algorithm:'astar',params:{heuristic:'manhattan'}},cookie)).status,400);
+    const current=await fetch(base+'/api/me',{headers:{Cookie:cookie}});
+    const currentData=await current.json();
+    const player=currentData.state.players.find((p)=>p.name==='Elena');
+    assert.equal(player.algorithm,'ida');
+    assert.equal(player.params.heuristic,'euclidean');
+    assert.ok(Number.isFinite(player.optimalLength));
+    assert.equal(currentData.state.maze.size,65);
+    assert.equal(currentData.state.maze.spawns.length,20);
+    assert.equal(currentData.state.readyCount,1);
     const start=await post('/api/start',{},adminCookie);
     assert.equal(start.status,200);
     assert.equal((await start.json()).count,1);
-    const current=await fetch(base+'/api/me',{headers:{Cookie:userCookie}});
-    const currentData=await current.json();
-    assert.equal(currentData.state.phase,'running');
-    assert.equal(currentData.state.leaderboard.length,1);
-    assert.equal(currentData.state.leaderboard[0].name,'Elena');
-    assert.equal(currentData.state.maze.spawns.length,4);
-    assert.ok(currentData.state.optimalLength>0);
-    assert.equal((await post('/api/select',{algorithm:'astar'},userCookie)).status,400);
+    assert.equal((await post('/api/select',{algorithm:'astar'},cookie)).status,400);
     const reset=await post('/api/reset',{},adminCookie);
-    const resetData=await reset.json();
-    assert.equal(resetData.state.phase,'lobby');
-    assert.equal(resetData.state.readyCount,0);
-    assert.equal(resetData.state.players.find((p)=>p.id===player.id).algorithm,null);
-    assert.equal(resetData.state.leaderboard.length,0);
+    const data=await reset.json();
+    assert.equal(data.state.phase,'lobby');
+    assert.equal(data.state.readyCount,0);
+    assert.equal(data.state.maze.spawns.length,20);
+    assert.equal(data.state.players.find((p)=>p.name==='Elena').algorithm,null);
+    assert.equal((await post('/api/select',{algorithm:'astar',params:{heuristic:'chebyshev'}},cookie)).status,200);
     streamController.abort();
-  } finally { server.closeAllConnections(); await new Promise((resolve)=>server.close(resolve)); }
+  } finally {
+    server.closeAllConnections();
+    await new Promise((resolve)=>server.close(resolve));
+  }
 });

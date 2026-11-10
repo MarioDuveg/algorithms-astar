@@ -1,5 +1,5 @@
 import { ALGORITHMS, createAgent, normalizeParams, stepAgent } from '../shared/algorithms.js';
-import { makeMaze, shortestLength } from '../shared/maze.js';
+import { makeMaze, shortestLength, MAX_STUDENTS } from '../shared/maze.js';
 
 export class Room {
   constructor(onChange = () => {}, rng = Math.random) {
@@ -16,7 +16,8 @@ export class Room {
   }
 
   join(id, name, isAdmin = false) {
-    if (this.players.size >= 100) throw new Error('Capacidad máxima de 100 usuarios');
+    if (isAdmin && [...this.players.values()].some((p) => p.isAdmin)) throw new Error('Ya hay un administrador conectado');
+    if (!isAdmin && [...this.players.values()].filter((p) => !p.isAdmin).length >= MAX_STUDENTS) throw new Error('La sala tiene un máximo de 20 estudiantes');
     if ([...this.players.values()].some((p) => p.name.toLocaleLowerCase('es') === name.toLocaleLowerCase('es'))) throw new Error('Ese nombre ya está en uso');
     const player = { id, name, isAdmin, online: true, algorithm: null, params: null, agent: null, participating: false, order: ++this.sequence };
     this.players.set(id, player); this.onChange(); return player;
@@ -39,12 +40,16 @@ export class Room {
     const p = this.players.get(id);
     if (!p) throw new Error('Debes iniciar sesión');
     if (this.phase !== 'lobby') throw new Error('La ronda está activa. Espera el reinicio del administrador.');
+    if (p.isAdmin) throw new Error('El administrador dirige la carrera; no participa como estudiante');
+    if (p.algorithm !== null) throw new Error('Estrategia ya confirmada: no puede cambiarse hasta Reset');
     if (!ALGORITHMS.some((a) => a.id === algorithm)) throw new Error('Selecciona un algoritmo válido');
+    const used = new Set([...this.players.values()].filter((v) => v.agent).map((v) => v.agent.spawnIndex));
+    const slot = this.maze.spawns.findIndex((_, i) => !used.has(i));
+    if (slot < 0) throw new Error('No hay más posiciones disponibles');
     p.algorithm = algorithm;
     p.params = normalizeParams(rawParams);
-    // Puertas cardinales rotadas: todas tienen el mismo camino óptimo.
-    const side = (p.order - 1) % 4;
-    p.agent = createAgent(this.maze, side, algorithm, p.params);
+    p.agent = createAgent(this.maze, slot, algorithm, p.params);
+    p.optimalLength = shortestLength(this.maze, p.agent.start);
     p.participating = false;
     this.onChange();
     return p;
@@ -69,10 +74,10 @@ export class Room {
     if (!this.players.get(id)?.isAdmin) throw new Error('Acción exclusiva del administrador');
     this.phase = 'lobby'; this.round++;
     this.startedAt = null; this.finishedAt = null; this.tickNumber = 0;
-    // Un único laberinto NUEVO por ronda, siempre simétrico.
+    // Un único mapa NUEVO con hasta 20 entradas exteriores aleatorias por ronda.
     this.maze = makeMaze(1000 + Math.floor(this.rng() * 1_000_000_000));
     for (const v of this.players.values()) {
-      v.algorithm = null; v.params = null; v.agent = null; v.participating = false;
+      v.algorithm = null; v.params = null; v.agent = null; v.optimalLength = null; v.participating = false;
     }
     this.onChange();
   }
@@ -106,7 +111,7 @@ export class Room {
       const a = p.agent;
       return {
         id: p.id, name: p.name, isAdmin: p.isAdmin, online: p.online,
-        algorithm: p.algorithm, params: p.params, participating: p.participating,
+        algorithm: p.algorithm, params: p.params, participating: p.participating, optimalLength: p.optimalLength ?? null,
         status: a?.status ?? 'waiting', reason: a?.reason ?? '',
         x: a?.x ?? null, z: a?.z ?? null,
         start: a?.start ?? null,
@@ -139,7 +144,8 @@ export class Room {
       activeCount: players.filter((p) => p.participating && p.status === 'active').length,
       arrivedCount: leaderboard.filter((p) => p.arrivedAt !== null).length,
       players, leaderboard, maze: this.maze,
-      optimalLength: shortestLength(this.maze, this.maze.spawns[0]),
+      optimalLength: [this.maze.minSpawnDistance, this.maze.maxSpawnDistance],
+      maxStudents: MAX_STUDENTS,
     };
   }
 }
