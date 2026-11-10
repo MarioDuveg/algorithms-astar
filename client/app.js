@@ -9,6 +9,8 @@ const paramsByAlgorithm = new Map();
 let me = null, state = null, stream = null;
 let selectedAlgorithm = null, pending = false, confirming = false, lastRound = null, lastPhase = null;
 let toastTimer = null;
+let desiredComplexity = null, generatingMaze = false, lastMazeVersion = null;
+const difficultyLabels = ['Muy abierto', 'Abierto', 'Intermedio', 'Complejo', 'Muy complejo'];
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
 const initials = (name) => [...name][0]?.toLocaleUpperCase('es') || '?';
 
@@ -99,6 +101,17 @@ function renderSelection() {
     note.classList.remove('note-ready');
   }
 }
+function renderMazeAdmin() {
+  if (!me?.isAdmin || !state) return;
+  const slider = $('#complexity-slider'), button = $('#generate-maze-btn');
+  const level = desiredComplexity ?? state.maze.complexity;
+  slider.value = String(level);
+  slider.disabled = state.phase !== 'lobby' || generatingMaze;
+  button.disabled = state.phase !== 'lobby' || generatingMaze;
+  button.textContent = generatingMaze ? 'Generando…' : '↻ Generar nuevo laberinto';
+  $('#complexity-value').textContent = `${level} · ${difficultyLabels[level - 1]}`;
+  $('#maze-generation-note').textContent = `Mapa actual: nivel ${state.maze.complexity}, ${state.maze.wallPercent}% de paredes. ${state.phase === 'lobby' ? 'Puedes generar otro sin desbloquear estrategias confirmadas.' : 'Pulsa Reset para volver a generar.'}`;
+}
 function drawLeaderboard() {
   const rankings = state?.leaderboard || [];
   if (!rankings.length) {
@@ -132,7 +145,10 @@ function updateClock() {
 }
 function applyState(next) {
   const oldRound = lastRound, oldPhase = lastPhase;
+  const previousMazeVersion = lastMazeVersion;
   state = next; lastRound = state.round; lastPhase = state.phase;
+  lastMazeVersion = state.mazeVersion;
+  if (desiredComplexity === null || previousMazeVersion !== null && previousMazeVersion !== state.mazeVersion) desiredComplexity = state.maze.complexity;
   const own = state.players.find((p) => p.id === me?.id);
   if (oldRound !== null && oldRound !== state.round) {
     selectedAlgorithm = null; paramsByAlgorithm.clear(); pending = false; confirming = false;
@@ -151,6 +167,7 @@ function applyState(next) {
   $('#optimal-length').textContent = Array.isArray(state.optimalLength) ? state.optimalLength.join('–') : '—';
   $('#start-btn').disabled = state.phase !== 'lobby' || !state.readyCount;
   scene.setState(state, me?.id);
+  renderMazeAdmin();
   renderAlgorithms(); renderSelection(); drawLeaderboard(); drawRoom(); updateClock();
 
   const prompt = $('#map-prompt');
@@ -186,6 +203,7 @@ function enter(response) {
   $('#account-name').textContent = me.name;
   $('#account-avatar').textContent = initials(me.name);
   $('#admin-controls').hidden = !me.isAdmin;
+  $('#maze-admin-tools').hidden = !me.isAdmin;
   applyState(response.state); openStream();
 }
 $('#login-name').addEventListener('input', () => {
@@ -218,6 +236,20 @@ $('#start-btn').addEventListener('click', async () => {
     showToast(`${response.count} participante(s) comienzan a explorar.`);
   } catch (error) { showToast(error.message, true); }
 });
+$('#complexity-slider').addEventListener('input', (event) => {
+  desiredComplexity = Number(event.target.value);
+  renderMazeAdmin();
+});
+$('#generate-maze-btn').addEventListener('click', async () => {
+  if (!me?.isAdmin || state?.phase !== 'lobby' || generatingMaze) return;
+  generatingMaze = true; renderMazeAdmin();
+  try {
+    const result = await request('/api/regenerate', { complexity: desiredComplexity });
+    applyState(result.state);
+    showToast(`Nuevo laberinto: nivel ${result.state.maze.complexity}, ${result.state.maze.wallPercent}% de paredes. Las estrategias confirmadas siguen bloqueadas.`);
+  } catch (error) { showToast(error.message, true); }
+  finally { generatingMaze = false; renderMazeAdmin(); }
+});
 $('#reset-btn').addEventListener('click', async () => {
   if (!window.confirm('¿Nueva ronda? Se generará otro laberinto incompleto de 65×65, se sortearán las 20 entradas y las estrategias podrán elegirse de nuevo.')) return;
   try { applyState((await request('/api/reset')).state); }
@@ -229,7 +261,8 @@ $('#logout-btn').addEventListener('click', async () => {
   me = null; state = null; selectedAlgorithm = null; lastRound = null; lastPhase = null; pending = false; confirming = false;
   paramsByAlgorithm.clear(); scene.setState(null, null);
   $('#auth-screen').hidden = false; $('#account-box').hidden = true;
-  $('#admin-controls').hidden = true; $('#login-password').value = '';
+  $('#admin-controls').hidden = true; $('#maze-admin-tools').hidden = true; $('#login-password').value = '';
+  desiredComplexity = null; lastMazeVersion = null;
   renderAlgorithms(); renderParameters(); renderSelection(); $('#login-name').focus();
 });
 $('#home-camera').addEventListener('click', () => scene.home());

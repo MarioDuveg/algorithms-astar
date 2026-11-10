@@ -1,10 +1,13 @@
-# Maze Race — A* vs IDA* · edición 20 estudiantes
+# Maze Race — A* vs IDA* · edición 4.0 (20 estudiantes)
 
 Carrera multijugador en español para comparar **A*** e **IDA*** sobre el **mismo laberinto cuadrado 65×65**. Basado en el proyecto original Summit Lab. Incluye acceso de estudiantes, administrador, botón Start/Reset, ranking de llegada, recorrido de cada buscador, cinco heurísticas y tema claro/oscuro. Solo necesita **Node.js 20 o superior**, sin paquetes npm externos.
 
 ## Cambios de esta edición
 
-- **Tablero de 65×65 celdas** (antes 33×33), con paredes sueltas, obstáculos en L, segmentos cortos y patios de 5×5 o mayores. No es obligatorio que las paredes formen pasillos cerrados. El terreno se genera a partir de una semilla y se regenera con **Reset**.
+- **Tablero de 65×65 celdas** (antes 33×33), con paredes sueltas, obstáculos en L, segmentos cortos y patios de 5×5 o mayores. No es obligatorio que las paredes formen pasillos cerrados. El terreno se genera aleatoriamente al iniciar el servidor y puede sustituirse con **Generar nuevo laberinto**, sin crear otra ronda, o con **Reset**.
+- **Densidad ajustable por el administrador, de 1 a 5**: Muy abierto (~12 % de paredes), Abierto (~18 %), Intermedio (~25 %, predeterminado), Complejo (~31 %) y Muy complejo (~37 %). Se controla con un deslizador. El botón **Generar nuevo laberinto** genera otro mapa aleatorio con la complejidad elegida, pero solo está habilitado antes de Start. La pantalla muestra el porcentaje de paredes del mapa vigente. Los espacios sin obstáculos y los fragmentos de muros se conservan a cualquier nivel.
+- **Las confirmaciones sobreviven al botón Generar nuevo**: si alguien ya confirmó su algoritmo y heurística, su elección continúa bloqueada y se le asigna una nueva posición de entrada en el mapa actualizado. Solo **Reset** crea una nueva ronda y libera la selección.
+- **Puntos identificados por usuario**: ya no se dibujan 20 puntos amarillos de posibles accesos. Cada participante aparece en un punto de color con **su nombre** junto a la ficha, tanto antes de la carrera como durante el recorrido; la meta central se representa con un rombo verde.
 - **20 accesos exteriores exclusivos**, cinco en cada borde. Los lugares se sortean al crear el laberinto; su distribución también cambia al reiniciar. Cada estudiante recibe uno distinto en el momento de confirmar su estrategia.
 - El mapa sigue siendo el **mismo para todos**, con simetría rotacional de 90°. Para reducir la ventaja geográfica, las 20 posiciones se sortean dentro de una banda de longitud óptima de **como máximo cuatro pasos de diferencia**, calculada por búsqueda en anchura. Esto NO implica distancias exactamente iguales ni garantiza el mismo número de expansiones: la interfaz muestra la longitud óptima personal y el rango de la ronda. El origen exacto es aleatorio; no se debe interpretar la clasificación como una comparación experimental controlada únicamente de heurísticas.
 - Las cuatro avenidas centrales están interrumpidas por pequeños tramos de muro, pero se han abierto desvíos para **garantizar un camino** desde cualquiera de los 20 inicios hasta el centro. El borde exterior permanece transitable.
@@ -30,7 +33,7 @@ IDA* utiliza una pila explícita con límites sucesivos de `f = g + h` y una tab
 
 El primer estudiante en llegar al centro encabeza el ranking. El orden lo determina el pulso y la expansión simulada de llegada. Quienes llegan en el mismo pulso y expansión comparten puesto. Las posiciones de inicio pueden tener hasta cuatro pasos de diferencia óptima, por lo que la prueba es una carrera desde ubicaciones próximas en dificultad, **no una medición estrictamente equivalente para comparar algoritmos**.
 
-El administrador inicia la competición con **Start**. Con **Reset** cambia el laberinto, sortea otras 20 posiciones, reinicia los resultados y desbloquea la elección para una nueva ronda. No se requiere cerrar sesión.
+El administrador inicia la competición con **Start**. Con **Generar nuevo laberinto** en la sala de espera cambia el mapa y sortea otras 20 posiciones, conservando las estrategias ya confirmadas. Con **Reset** cambia el laberinto, sortea otras 20 posiciones, reinicia los resultados y desbloquea la elección para una nueva ronda. Reset mantiene el nivel de complejidad seleccionado. No se requiere cerrar sesión.
 
 ## Ejecución local
 
@@ -50,18 +53,18 @@ npm run check
 npm test
 ```
 
-Las pruebas incluyen 65×65, muro incompleto, patios abiertos, simetría, 20 entradas de borde diferentes, rutas siempre posibles y con distancias cercanas, A*/IDA*, umbrales, capacidad máxima, bloqueo de confirmación en servidor, API, Start/Reset y el tema oscuro.
+Las diez pruebas incluyen 65×65, cinco densidades ordenadas, generación aleatoria, patios abiertos, simetría, 20 entradas de borde diferentes, rutas posibles y con distancias cercanas, A*/IDA*, umbrales, máximo de estudiantes, bloqueo de confirmación en servidor, regeneración autorizada, API, Start/Reset y el tema oscuro.
 
 ## Estructura
 
 ```text
-client/index.html       Acceso, interfaz, botón de tema y opciones
+client/index.html       Acceso, panel del generador, botón de tema y opciones
 client/app.js           Selección única, ranking y eventos SSE
 client/styles.css       Temas claro/oscuro y diseño adaptable
-client/maze2d.js        Dibujo del laberinto y sus 20 inicios
-shared/maze.js          Generación 65×65, cuatro sectores y sorteos
+client/maze2d.js        Dibujo del laberinto y puntos con nombres de usuario
+shared/maze.js          Generación 65×65, cinco densidades y sorteos
 shared/algorithms.js    A*, IDA*, heurísticas y expansiones
-server/room.js          Control de las 20 plazas y bloqueo de estrategia
+server/room.js          Control de las 20 plazas, bloqueo y regeneración
 server/index.js         API y servidor Node.js
 render.yaml             Despliegue en Render
 tests/                  Pruebas unitarias e integración
@@ -69,4 +72,4 @@ tests/                  Pruebas unitarias e integración
 
 ## Consideraciones
 
-La simulación conserva el estado **solo en memoria**. Si se reinicia el servidor o se crea otra instancia, se perderá la sala; no se guarda una base de datos. La desconexión de un estudiante detiene temporalmente su agente y, tras un tiempo, puede retirar su sesión. En la interfaz, los nodos visitados se muestran para el propio jugador; en posiciones superpuestas se agrupan fichas para mejorar la visualización. El modo oscuro se guarda por navegador, no en el servidor.
+La simulación conserva el estado **solo en memoria**. Si se reinicia el servidor o se crea otra instancia, se perderá la sala; no se guarda una base de datos. La desconexión de un estudiante detiene temporalmente su agente y, tras un tiempo, puede retirar su sesión. En la interfaz, los nodos visitados se muestran para el propio jugador; las fichas superpuestas se desplazan ligeramente y sus etiquetas buscan posiciones sin solapamiento. El modo oscuro se guarda por navegador, no en el servidor.

@@ -184,6 +184,10 @@ async function handle(req, res) {
       const count = room.start(auth.sid);
       return sendJSON(res, 200, { ok: true, count, state: room.snapshot() });
     }
+    if (pathname === '/api/regenerate') {
+      room.regenerate(auth.sid, body.complexity);
+      return sendJSON(res, 200, { ok: true, state: room.snapshot() });
+    }
     if (pathname === '/api/reset') {
       room.reset(auth.sid);
       return sendJSON(res, 200, { ok: true, state: room.snapshot() });

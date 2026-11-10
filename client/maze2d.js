@@ -79,12 +79,7 @@ export class MazeView {
       }
     }
 
-    // Marcar discretamente los 20 puntos posibles de arranque en las orillas.
-    for (const p of maze.spawns) {
-      const [x, y] = XY(p);
-      ctx.beginPath(); ctx.arc(x, y, Math.max(1.3, Math.min(3, cell * .30)), 0, Math.PI * 2);
-      ctx.fillStyle = dark ? '#e9af70' : '#c48a4f'; ctx.fill();
-    }
+    // No dibujar puntos de inicio vacíos: solo aparecen los estudiantes reales.
     const own = players.find((p) => p.id === this.meId);
     if (this.trails && own?.explored?.length) {
       const unique = new Set(own.explored.map(([r, c]) => `${r},${c}`));
@@ -108,44 +103,96 @@ export class MazeView {
       ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.stroke();
     }
 
+    // Meta en verde azulado; no se usan puntos amarillos como accesos.
     const [gx, gy] = XY(maze.center);
-    ctx.fillStyle = '#f4c86c';
-    ctx.fillRect(gx - cell * .51, gy - cell * .51, cell * 1.02, cell * 1.02);
-    ctx.fillStyle = '#9c6322';
-    ctx.font = `${Math.max(9, cell * .88)}px system-ui`;
+    ctx.fillStyle = dark ? '#56e6c4' : '#139c87';
+    ctx.fillRect(gx - cell * .55, gy - cell * .55, cell * 1.1, cell * 1.1);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = `bold ${Math.max(9, cell * .86)}px system-ui`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('★', gx, gy + cell * .04);
+    ctx.fillText('◆', gx, gy);
 
-    const byCell = new Map();
-    for (const p of players) {
-      if (!p.algorithm || p.x === null) continue;
-      const k = `${p.x},${p.z}`;
-      if (!byCell.has(k)) byCell.set(k, []);
-      byCell.get(k).push(p);
+    // Las etiquetas pertenecen a fichas confirmadas, no a slots sin usar.
+    // Si coinciden varias fichas, se separan ligeramente para identificarlas.
+    const markers = players.filter((p) => p.algorithm && p.x !== null && p.z !== null);
+    const occupancy = new Map();
+    for (const p of markers) {
+      const key = `${p.x},${p.z}`;
+      if (!occupancy.has(key)) occupancy.set(key, []);
+      occupancy.get(key).push(p);
     }
-    for (const group of byCell.values()) {
+    const dots = [];
+    for (const group of occupancy.values()) {
       const [cx, cy] = XY([group[0].x, group[0].z]);
-      // Las 20 fichas pueden coincidir: mostrar un contador en vez de ocultarlas.
-      if (group.length > 3) {
-        const mine = group.some((p) => p.id === this.meId);
-        const r = Math.max(5, Math.min(11, cell * .85));
-        ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
-        ctx.fillStyle = mine ? '#0b9e82' : (dark ? '#6184c9' : '#486aa3'); ctx.fill();
-        ctx.strokeStyle = '#fff'; ctx.lineWidth = mine ? 2 : 1; ctx.stroke();
-        ctx.fillStyle = '#fff'; ctx.font = `700 ${Math.max(8, Math.min(12, r))}px system-ui`;
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(group.length, cx, cy);
-        continue;
-      }
       group.forEach((p, i) => {
-        const a = i * Math.PI * 2 / Math.min(5, group.length);
-        const radius = group.length === 1 ? 0 : Math.min(cell * .26, 5);
-        const x = cx + Math.cos(a) * radius, y = cy + Math.sin(a) * radius;
-        const r = Math.max(2.3, Math.min(7, cell * .47));
-        ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2);
-        ctx.fillStyle = agentColor(p, this.meId);
-        ctx.fill(); ctx.lineWidth = p.id === this.meId ? 2.5 : 1.5;
-        ctx.strokeStyle = '#fff'; ctx.stroke();
+        const angle = i * 2.399963229728653;
+        const spread = group.length > 1 ? Math.min(18, 5 + Math.sqrt(i) * 3) : 0;
+        const x = cx + Math.cos(angle) * spread;
+        const y = cy + Math.sin(angle) * spread;
+        dots.push({ p, x, y });
       });
+    }
+    dots.sort((a, b) => Number(a.p.id === this.meId) - Number(b.p.id === this.meId));
+    for (const { p, x, y } of dots) {
+      const color = agentColor(p, this.meId);
+      const radius = Math.max(3.1, Math.min(6.8, cell * .52));
+      ctx.beginPath(); ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fillStyle = color; ctx.fill();
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = p.id === this.meId ? 2.4 : 1.2; ctx.stroke();
+    }
+
+    // Nombre visible junto a cada punto. Buscar posiciones que no se tapen;
+    // una línea del mismo color conecta cada etiqueta con su ficha.
+    const placed = [];
+    for (const { p, x, y } of dots) {
+      const name = String(p.name);
+      const fontSize = 10;
+      ctx.font = `700 ${fontSize}px system-ui, sans-serif`;
+      const labelWidth = Math.ceil(ctx.measureText(name).width) + 13;
+      const labelHeight = 17;
+      const isMine = p.id === this.meId;
+      const atStart = this.state.phase === 'lobby';
+      const [r, c] = p.start;
+      const side = r === 0 ? 0 : c === n - 1 ? 1 : r === n - 1 ? 2 : 3;
+      // Preferir la etiqueta hacia fuera de la orilla durante la espera.
+      const directions = atStart
+        ? [side, (side + 1) % 4, (side + 3) % 4, (side + 2) % 4]
+        : [0, 1, 3, 2];
+      let best = null;
+      for (const dir of directions) for (const distance of [12, 26, 43, 61]) {
+        for (const offset of [0, -16, 16, -34, 34]) {
+          let bx, by;
+          if (dir === 0) { bx = x - labelWidth / 2 + offset; by = y - distance - labelHeight; }
+          else if (dir === 1) { bx = x + distance; by = y - labelHeight / 2 + offset; }
+          else if (dir === 2) { bx = x - labelWidth / 2 + offset; by = y + distance; }
+          else { bx = x - distance - labelWidth; by = y - labelHeight / 2 + offset; }
+          bx = Math.max(3, Math.min(width - labelWidth - 3, bx));
+          by = Math.max(3, Math.min(height - labelHeight - 3, by));
+          const rect = { x: bx, y: by, w: labelWidth, h: labelHeight };
+          let collision = 0;
+          for (const other of placed) {
+            const dx = Math.max(0, Math.min(rect.x + rect.w + 3, other.x + other.w + 3) - Math.max(rect.x - 3, other.x - 3));
+            const dy = Math.max(0, Math.min(rect.y + rect.h + 3, other.y + other.h + 3) - Math.max(rect.y - 3, other.y - 3));
+            collision += dx * dy;
+          }
+          const score = collision * 10 + distance + Math.abs(offset) * .4 + directions.indexOf(dir) * 5;
+          if (!best || score < best.score) best = { ...rect, score };
+        }
+      }
+      const { x: bx, y: by, w, h } = best;
+      placed.push(best);
+      const nearX = Math.max(bx, Math.min(bx + w, x));
+      const nearY = Math.max(by, Math.min(by + h, y));
+      const color = agentColor(p, this.meId);
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(nearX, nearY);
+      ctx.lineWidth = isMine ? 1.8 : 1; ctx.strokeStyle = color; ctx.stroke();
+      ctx.fillStyle = dark ? '#0c222deF' : '#f7fdfcf2';
+      ctx.strokeStyle = color; ctx.lineWidth = isMine ? 1.7 : 1;
+      ctx.beginPath(); ctx.roundRect(bx, by, w, h, 4); ctx.fill(); ctx.stroke();
+      ctx.font = `700 ${fontSize}px system-ui, sans-serif`;
+      ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = dark ? '#f0fbf8' : '#1b393b';
+      ctx.fillText(name, bx + 6, by + h / 2 + .4);
     }
     ctx.restore();
   }

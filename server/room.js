@@ -1,5 +1,5 @@
 import { ALGORITHMS, createAgent, normalizeParams, stepAgent } from '../shared/algorithms.js';
-import { makeMaze, shortestLength, MAX_STUDENTS } from '../shared/maze.js';
+import { makeMaze, shortestLength, MAX_STUDENTS, DEFAULT_COMPLEXITY } from '../shared/maze.js';
 
 export class Room {
   constructor(onChange = () => {}, rng = Math.random) {
@@ -12,7 +12,34 @@ export class Room {
     this.rng = rng;
     this.sequence = 0;
     this.tickNumber = 0;
-    this.maze = makeMaze(2026);
+    this.complexity = DEFAULT_COMPLEXITY;
+    this.mazeVersion = 0;
+    this.maze = makeMaze(this.nextSeed(), this.complexity);
+  }
+
+  nextSeed() {
+    // El contador garantiza semillas diferentes incluso con un RNG fijo en tests.
+    this.mazeVersion++;
+    return (Math.floor(this.rng() * 0x100000000) + this.mazeVersion * 2654435761) >>> 0;
+  }
+
+  /** Solo en lobby: otro mapa sin desbloquear elecciones ya confirmadas. */
+  regenerate(id, complexity) {
+    if (!this.players.get(id)?.isAdmin) throw new Error('Acción exclusiva del administrador');
+    if (this.phase !== 'lobby') throw new Error('Solo puedes generar laberintos antes de iniciar la carrera');
+    if (!Number.isInteger(complexity) || complexity < 1 || complexity > 5)
+      throw new Error('Selecciona una complejidad entre 1 y 5');
+    this.complexity = complexity;
+    this.maze = makeMaze(this.nextSeed(), this.complexity);
+    // Mantener confirmaciones bloqueadas. Cada slot ahora corresponde a una
+    // nueva posición aleatoria en la orilla; los agentes empiezan de cero.
+    for (const p of this.players.values()) {
+      if (!p.agent) continue;
+      p.agent = createAgent(this.maze, p.agent.spawnIndex, p.algorithm, p.params);
+      p.optimalLength = shortestLength(this.maze, p.agent.start);
+    }
+    this.onChange();
+    return this.maze;
   }
 
   join(id, name, isAdmin = false) {
@@ -75,7 +102,7 @@ export class Room {
     this.phase = 'lobby'; this.round++;
     this.startedAt = null; this.finishedAt = null; this.tickNumber = 0;
     // Un único mapa NUEVO con hasta 20 entradas exteriores aleatorias por ronda.
-    this.maze = makeMaze(1000 + Math.floor(this.rng() * 1_000_000_000));
+    this.maze = makeMaze(this.nextSeed(), this.complexity);
     for (const v of this.players.values()) {
       v.algorithm = null; v.params = null; v.agent = null; v.optimalLength = null; v.participating = false;
     }
@@ -137,7 +164,7 @@ export class Room {
       p.rank = place; lastTick = p.finishTick; lastTurn = p.finishTurn;
     });
     return {
-      phase: this.phase, round: this.round,
+      phase: this.phase, round: this.round, mazeVersion: this.mazeVersion,
       startedAt: this.startedAt, finishedAt: this.finishedAt,
       onlineCount: players.filter((p) => p.online).length,
       readyCount: players.filter((p) => p.online && p.algorithm).length,

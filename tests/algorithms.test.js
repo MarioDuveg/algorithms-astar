@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { makeMaze, rotate, SIZE, MAX_STUDENTS, shortestLength, isOpen, spawnSide } from '../shared/maze.js';
+import { makeMaze, rotate, SIZE, MAX_STUDENTS, shortestLength, isOpen, spawnSide, DEFAULT_COMPLEXITY } from '../shared/maze.js';
 import { ALGORITHMS, HEURISTICS, heuristic, normalizeParams, createAgent, stepAgent } from '../shared/algorithms.js';
 import { Room } from '../server/room.js';
 
@@ -131,4 +131,53 @@ test('Puestos iguales cuando los dos llegan durante la misma expansión de simul
     a.status = 'finished';a.distance = 40;
   }
   assert.deepEqual(room.snapshot().leaderboard.map((p) => p.rank),[1,1]);
+});
+
+
+test('Cinco niveles de paredes: densidad graduada, mapas aleatorios, acceso garantizado', () => {
+  const averages = [];
+  for (let level = 1; level <= 5; level++) {
+    const maps = [101,102,103,104,105].map((seed) => makeMaze(seed,level));
+    const percent = maps.reduce((sum,m) => sum + m.wallPercent, 0) / maps.length;
+    averages.push(percent);
+    for (const maze of maps) {
+      assert.equal(maze.complexity,level);
+      assert.ok(maze.wallCount > 0);
+      assert.ok(maze.spawns.every((p) => Number.isFinite(shortestLength(maze,p))));
+      assert.ok(maze.maxSpawnDistance - maze.minSpawnDistance <= 4);
+    }
+    assert.notDeepEqual(maps[0].grid,maps[1].grid);
+  }
+  assert.deepEqual(DEFAULT_COMPLEXITY,3);
+  assert.ok(averages.every((p,i) => i === 0 || p > averages[i-1] + 4),`Densidad creciente: ${averages}`);
+  assert.ok(averages[2] >= 23 && averages[2] <= 26);
+  assert.throws(() => makeMaze(1, 0),/complejidad/);
+  assert.throws(() => makeMaze(1, 5.2),/complejidad/);
+});
+
+test('El administrador puede generar nuevo mapa sin borrar ni desbloquear confirmaciones', () => {
+  const room = new Room(()=>{},()=>.2);
+  room.join('ad','admin',true);
+  room.join('a','Ana');room.join('b','Beto');
+  room.select('a','astar',{heuristic:'manhattan'});
+  room.select('b','ida',{heuristic:'euclidean'});
+  const before = room.maze.grid;
+  const version = room.mazeVersion;
+  assert.throws(() => room.regenerate('a',5),/administrador/);
+  assert.throws(() => room.regenerate('ad',0),/complejidad/);
+  room.regenerate('ad',5);
+  assert.equal(room.round,1);
+  assert.equal(room.mazeVersion,version + 1);
+  assert.equal(room.maze.complexity,5);
+  assert.notDeepEqual(room.maze.grid,before);
+  assert.equal(room.players.get('a').algorithm,'astar');
+  assert.equal(room.players.get('b').params.heuristic,'euclidean');
+  assert.equal(room.players.get('a').agent.maze,room.maze);
+  assert.throws(() => room.select('a','ida',{heuristic:'zero'}),/ya confirmada/);
+  room.start('ad');
+  assert.throws(() => room.regenerate('ad',1),/antes de iniciar/);
+  room.reset('ad');
+  assert.equal(room.maze.complexity,5);
+  assert.equal(room.players.get('a').algorithm,null);
+  assert.doesNotThrow(() => room.regenerate('ad',2));
 });

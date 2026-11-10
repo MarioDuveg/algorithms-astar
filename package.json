@@ -1,9 +1,9 @@
 {
   "name": "maze-race-astar-ida",
-  "version": "3.0.0",
+  "version": "4.0.0",
   "private": true,
   "type": "module",
-  "description": "Carrera de 20 estudiantes con A*, IDA*, laberinto 65×65 incompleto y tema oscuro.",
+  "description": "Carrera de 20 estudiantes con A*, IDA*, laberinto aleatorio 65×65 con cinco niveles de complejidad y tema oscuro.",
   "engines": { "node": ">=20" },
   "scripts": {
     "start": "node server/index.js",
